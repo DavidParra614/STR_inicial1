@@ -251,7 +251,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
       
       #Secuencia de decisión
       min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
-      if (pvalue.LM1<alfa) {
+      if (pvalue.LM1>alfa) {
         recomendado <- "Modelo Lineal"
       } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa) { 
         recomendado <-"LSTR"
@@ -284,7 +284,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
 
 #5.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
-auto.arima(ENSO, max.p=20, max.q=0, ic="aic")
+auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 
 #La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa
 
@@ -293,7 +293,7 @@ auto.arima(ENSO, max.p=20, max.q=0, ic="aic")
 
 
 
-ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 1:25, 1:5)
+ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 25, 5, 0.05)
 ENSO_NLtest
 
 
