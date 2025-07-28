@@ -67,7 +67,6 @@ INF=DINF_ENSO$INF
 #2. Gráfico de INF vs ENSO---------------------------------------
 ggplot(INFvsENSO, aes(x = Fecha)) +
 geom_line(aes(y = ENSO, color = "ENSO"), linewidth = 0.8) +
-|
   geom_line(aes(y = INF * (max(ENSO, na.rm = TRUE)/max(INF, na.rm = TRUE)), color = "INF"), linewidth = 0.8) +
             scale_y_continuous(
                 name = "ENSO",
@@ -218,7 +217,7 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     SSR_4 <- sum((residuals(Mod_H4))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Alternativa H4
     
     #Estadístico LM_4 para probar la Hipótesis Nula H04 del modelo según distribución F
-    LM2_3 <- ((SSR_3-SSR_4)/(length(Mod_H4$coef)-length(Mod_H3$coef)))/(SSR_3/(length(y_dep)-length(Mod_H4$coef))) #Estadístico LM_3 caclulado según distribución F
+    LM_4 <- ((SSR_3-SSR_4)/(length(Mod_H4$coef)-length(Mod_H3$coef)))/(SSR_3/(length(y_dep)-length(Mod_H4$coef))) #Estadístico LM_3 caclulado según distribución F
     pvalue.LM4 <- 1-pf(LM_4, df1=length(Mod_H4$coef)-length(Mod_H3$coef), df2=length(y_dep)-length(Mod_H4$coef))   #p_value arrojado del modelo H03
     
     if(0){
@@ -265,12 +264,11 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     
     resultados[[s_name]] <- list(
       variable_transicion = s_name,
-      p_H01 = pvalue.LM1
-      #  p_H01 = p_H01,
-      #  P_H02 = p_H02,
-      #  p_H03 = p_H03,
-      #  p_total = p_total,
-      # recomendado = recomendado
+      p_H01 = pvalue.LM1,
+      p_H02 = pvalue.LM2,
+      P_H03 = pvalue.LM3,
+      p_H04 = pvalue.LM4,
+      recomendado = recomendado
     )
     
   }
