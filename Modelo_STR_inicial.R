@@ -128,7 +128,7 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3) 
+terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05) 
 {
   #y: serie explicada
   #x: serie explicativa
@@ -244,16 +244,18 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3)
       }   
       
       #p-value total del modelo auxiliar (significancia global)
-      f_estad <- summary(mod3)$fstatistic
-      p_total <- pf(f_estad[1], f_estad[2], f_estad[3], lower.tail =FALSE)
+      #f_estad <- summary(mod3)$fstatistic
+      #p_total <- pf(f_estad[1], f_estad[2], f_estad[3], lower.tail =FALSE)
       
       #Secuencia de decisión
-      min_rechazo <- min(p_H01, p_H02, p_H03) #Hipótesis con mayor rechazo
-      if (min_rechazo==p_H03 & min_rechazo<0.05) {
-        recomendado <-"LSTR" 
-      } else if (min_rechazo==p_H02 & min_rechazo < 0.05) {
+      min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
+      if (pvalue.LM1<alfa) {
+        recomendado <- "Modelo Lineal"
+      } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa) { 
+        recomendado <-"LSTR"
+      } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa) {
         recomendado <- "ESTR"
-      } else if (min_rechazo==p_H01 & min_rechazo < 0.05) {
+      } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa) {
         recomendado <- "LSTR"
       } else recomendado <- "Modelo Lineal"
     } 
