@@ -43,7 +43,7 @@ rm(list = ls())
 require(readxl)
 
 #Definir directorio de trabajo
-Ruta.Sv = 'C:/Users/ASUS X507UA/OneDrive/Documentos/STR_inicial/STR_inicial'
+Ruta.Sv = 'C:/Users/ASUS X507UA/OneDrive/Documentos/PracticanteUnidadEconometria2025-2/STR_inicial1'
 Ruta.LF = '~/Archivos/STR2025/Steven/STR_Inicial'
 ifelse(Sys.info()[1]=='Darwin', setwd(Ruta.LF), setwd(Ruta.Sv))
 
