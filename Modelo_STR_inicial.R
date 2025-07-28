@@ -127,7 +127,7 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05) 
+terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) 
 {
   #y: serie explicada
   #x: serie explicativa
