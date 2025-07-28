@@ -44,7 +44,7 @@ require(readxl)
 
 #Definir directorio de trabajo
 Ruta.Sv = 'C:/Users/ASUS X507UA/OneDrive/Documentos/PracticanteUnidadEconometria2025-2/STR_inicial1'
-Ruta.LF = '~/Archivos/STR2025/Steven/STR_Inicial'
+Ruta.LF = '~/Archivos/STR2025/Steven/STR_Inicial1'
 ifelse(Sys.info()[1]=='Darwin', setwd(Ruta.LF), setwd(Ruta.Sv))
 
 #1. Datos Inflación de Alimentos y ENSO (Mar 1962-Dic 2018)-----
