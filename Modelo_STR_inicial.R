@@ -67,7 +67,7 @@ INF=DINF_ENSO$INF
 #2. Gráfico de INF vs ENSO---------------------------------------
 ggplot(INFvsENSO, aes(x = Fecha)) +
 geom_line(aes(y = ENSO, color = "ENSO"), linewidth = 0.8) +
-
+|
   geom_line(aes(y = INF * (max(ENSO, na.rm = TRUE)/max(INF, na.rm = TRUE)), color = "INF"), linewidth = 0.8) +
             scale_y_continuous(
                 name = "ENSO",
@@ -159,7 +159,7 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
   
   #Matriz de variables explicativas candidatas a ser variable de transición
   X <- (base_explicativas[, explicativas])
-  
+  data_explicativas <- as.data.frame(base_explicativas)
   
   #Lista de variables de transición candidatas
   z_cand <- c(
@@ -196,16 +196,17 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     SSR_2 <- sum((residuals(Mod_H2))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Alternativa H2
     
     #Estadístico LM_2 para probar la Hipótesis Nula H02 del modelo según distribución F
-    LM2_2 <- ((SSR_0-SSR_2)/(length(Mod_H2$coef)-length(Mod_H0$coef)))/(SSR_0/(length(y_dep)-length(Mod_H2$coef))) #Estadístico LM_2 caclulado según distribución F
+    LM_2 <- ((SSR_0-SSR_2)/(length(Mod_H2$coef)-length(Mod_H0$coef)))/(SSR_0/(length(y_dep)-length(Mod_H2$coef))) #Estadístico LM_2 caclulado según distribución F
     pvalue.LM2 <- 1-pf(LM_2, df1=length(Mod_H2$coef)-length(Mod_H0$coef), df2=length(y_dep)-length(Mod_H2$coef))   #p_value arrojado del modelo H02
     
     #Modelo H03 --> Modelo bajo la Hipótesis Nula H03 que plantea que b2=0 | b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 1
     #NOTA: La Hipótesis Nula H03 es la misma hipótesis H2 que plantea que el polinomio de Taylor de la variable de transición s, es de orden 1
-    Mod_H3 <- lm(y_dep ~ X + X*s + X(s^2)) #Modelo bajo la Hipótesis Alternativa H3 que plantea b2≠0 | b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 2
+    s2=s^2 #Variable de transición al cuadrado
+    Mod_H3 <- lm(y_dep ~ X + X*s + X*s2) #Modelo bajo la Hipótesis Alternativa H3 que plantea b2≠0 | b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 2
     SSR_3 <- sum((residuals(Mod_H3))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Alternativa H3
     
     #Estadístico LM_3 para probar la Hipótesis Nula H03 del modelo según distribución F
-    LM2_3 <- ((SSR_2-SSR_3)/(length(Mod_H3$coef)-length(Mod_H2$coef)))/(SSR_2/(length(y_dep)-length(Mod_H3$coef))) #Estadístico LM_3 caclulado según distribución F
+    LM_3 <- ((SSR_2-SSR_3)/(length(Mod_H3$coef)-length(Mod_H2$coef)))/(SSR_2/(length(y_dep)-length(Mod_H3$coef))) #Estadístico LM_3 caclulado según distribución F
     pvalue.LM3 <- 1-pf(LM_3, df1=length(Mod_H3$coef)-length(Mod_H2$coef), df2=length(y_dep)-length(Mod_H3$coef))   #p_value arrojado del modelo H03
     
     #Modelo H04 --> Modelo bajo la Hipótesis Nula H04 que plantea que b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 2
@@ -262,7 +263,7 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     
     resultados[[s_name]] <- list(
       variable_transicion = s_name,
-      p_H0 = pvalue.LM0
+      p_H01 = pvalue.LM1
       #  p_H01 = p_H01,
       #  P_H02 = p_H02,
       #  p_H03 = p_H03,
