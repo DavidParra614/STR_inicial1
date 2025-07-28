@@ -178,12 +178,15 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     }
     s=data_explicativas[[s_name]]
     
+    s2=s^2 #Variable de transición al cuadrado
+    s3=s^3 #Variable de transición al cubo
+    
     #Modelo H0 --> Modelo Lineal
     Mod_H0 <- lm(y_dep~X) #Modelo bajo la Hipótesis Nula H0 que plantea un modelo lineal 
     SSR_0 <- sum((residuals(Mod_H0))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Nula H0
     
     #Modelo H1 --> Modelo NO lineal completo 
-    Mod_H1 <- lm(y_dep ~ X + X*s + X*(s^2) + X*(s^3)) #Modelo bajo la Hipótesis Alternativa H1 que plantea Modelo NO lineal con la variable de transición s, s^2 y s^3 
+    Mod_H1 <- lm(y_dep ~ X + X*s + X*s2 + X*s3) #Modelo bajo la Hipótesis Alternativa H1 que plantea Modelo NO lineal con la variable de transición s, s^2 y s^3 
     SSR_1 <- sum((residuals(Mod_H1))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Alternativa H1
     
     #Estadístico LM_1 para probar la no linealidad del modelo según distribución F
@@ -201,7 +204,6 @@ terasvirta_testNL <- function(y=DINF, x=ENSO, rez_y=5, rez_x=3, alfa=0.05)
     
     #Modelo H03 --> Modelo bajo la Hipótesis Nula H03 que plantea que b2=0 | b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 1
     #NOTA: La Hipótesis Nula H03 es la misma hipótesis H2 que plantea que el polinomio de Taylor de la variable de transición s, es de orden 1
-    s2=s^2 #Variable de transición al cuadrado
     Mod_H3 <- lm(y_dep ~ X + X*s + X*s2) #Modelo bajo la Hipótesis Alternativa H3 que plantea b2≠0 | b3=0, es decir, el polinomio de Taylor de la variable de transición s, es de orden 2
     SSR_3 <- sum((residuals(Mod_H3))^2) #Suma de residuos al cuadrado del modelo según la Hipótesis Alternativa H3
     
