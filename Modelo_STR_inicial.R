@@ -127,7 +127,7 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x, alfa) { 
+terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) { 
 
   #y: serie explicada
   #x: serie explicativa
@@ -188,23 +188,6 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x, alfa) {
     paste0('y_L', 1:rez_y),
     paste0('x_L', 1:rez_x)
    )
-  
-   #Matriz de rezagos de y como variables explicativas
-   base_explicativas <- embed(y, rez_max+1)
-   colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
-  
-   #Variable explicada
-   y_dep <- base_explicativas[, 'y_L']
-  
-   #Rezagos de 'y' como variables explicativas 
-   explicativas <- paste0("y_L", 1:rez_y)
-  
-   #Matriz de variables explicativas candidatas a ser variable de transición
-   X <- (base_explicativas[, explicativas])
-   data_explicativas <- as.data.frame(base_explicativas)
-  
-   #Lista de variables de transición candidatas
-   z_cand <- paste0('y_L', 1:rez_y)
   }
   
   resultados <- list()
@@ -291,7 +274,7 @@ auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
 #5.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
-ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x=NULL, 0.05)
+ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x, 0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
@@ -308,8 +291,8 @@ Mod_ARDL_DINF$top_orders
 cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
-DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 24, 0.05)
-DINF_NLtest
+DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 5, 0.05)
+print(DINF_NLtest)
 
 
 
