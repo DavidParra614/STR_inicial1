@@ -127,8 +127,8 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) 
-{
+terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) { 
+
   #y: serie explicada
   #x: serie explicativa
   #rez_y: número de rezagos de la variable endógena explicativa y
@@ -143,8 +143,8 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
   #Matriz de variables explicativas hasta el rezago máximo
   base_explicativas <- embed(cbind(y,x), rez_max+1)
   colnames(base_explicativas) <-c(
-    paste0('y_L', c('',1:rez_max)),
-    paste0('x_L', c('',1:rez_max))
+    paste0('y_L', c('', 1:rez_max)),
+    paste0('x_L', c('', 1:rez_max))
   )
   
   #Variable explicada
@@ -217,16 +217,14 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
       
     #Secuencia de decisión
     min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
-    if (pvalue.LM1>alfa) {
-      recomendado <- "Modelo Lineal"
-    } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa & pvalue.LM1<alfa) { 
+    if (min_rechazo==pvalue.LM2 & min_rechazo<alfa & pvalue.LM1<alfa) { 
       recomendado <-"LSTR"
     } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa & pvalue.LM1<alfa) {
       recomendado <- "ESTR"
     } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa & pvalue.LM1<alfa) {
       recomendado <- "LSTR"
     } else recomendado <- "Modelo Lineal"
-    } 
+    
     
     resultados[[s_name]] <- list(
       variable_transicion = s_name,
@@ -236,7 +234,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
       p_H04 = pvalue.LM4,
       recomendado = recomendado
     )
-  
+  }
   resultados <- do.call(rbind, lapply(resultados, as.data.frame))
   rownames(resultados) <- NULL
   
@@ -244,8 +242,8 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
   
 }
 
-ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 25, 5, 0.05)
-ENSO_NLtes
+ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 5, 0.05)
+
 
 #5. Estimación de un modelo STR para ENSO-------------------
 
@@ -259,8 +257,12 @@ Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 1)
 summary(Mod_STR_ENSO)
 cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
+#6. Estimación de un modelo STR para DINF---------------------------------------
 
-pruebaARDL <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order= 30,selection = "AIC")
-pruebaARDL$top_orders
+#6.1. Estimación de un modelo ARDL para seleccionar los rezagos de DINF y de ENSO explicativos--------------
+
+Mod_ARDL_DINF <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order=24,selection = "AIC")
+Mod_ARDL_DINF$top_orders
 
 
+?embed
