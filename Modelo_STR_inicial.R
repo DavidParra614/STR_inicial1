@@ -286,12 +286,12 @@ cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variabl
 
 #6.1. Estimación de un modelo ARDL para seleccionar los rezagos de DINF y de ENSO explicativos--------------
 
-Mod_ARDL_DINF <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order=24,selection = "AIC")
+Mod_ARDL_DINF <- auto_ardl(DINF~ ENSO, data=DINFvsENSO, max_order=c(25,5),selection = "AIC")
 Mod_ARDL_DINF$top_orders
 cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
-DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 5, 0.05)
+DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 3, 5, 0.05)
 print(DINF_NLtest)
 
 
