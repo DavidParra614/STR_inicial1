@@ -219,47 +219,18 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
     #Estadístico LM_4 para probar la Hipótesis Nula H04 del modelo según distribución F
     LM_4 <- ((SSR_3-SSR_4)/(length(Mod_H4$coef)-length(Mod_H3$coef)))/(SSR_3/(length(y_dep)-length(Mod_H4$coef))) #Estadístico LM_3 caclulado según distribución F
     pvalue.LM4 <- 1-pf(LM_4, df1=length(Mod_H4$coef)-length(Mod_H3$coef), df2=length(y_dep)-length(Mod_H4$coef))   #p_value arrojado del modelo H03
-    
-    if(0){
-      #Modelos asociados
-      # H01: b1=0 | b2=b3=0 --> Su rechazo se asocia con LSTR
-      mod0<-lm(resid_lm~ 1)
-      mod1<-lm(resid_lm~ s)
       
-      # H02: b2=0 | b3=0 --> Su rechazo se asocia con ESTR
-      mod2 <- lm(resid_lm~ s + s2)
-      
-      # H03: b3=0 --> Su rechazo se asocia con LSTR
-      mod3 <- lm(resid_lm~ s + s2 + s3)
-      
-      test_H01 <- anova(mod0, mod1)
-      test_H02 <- anova(mod1, mod2)
-      test_H03 <- anova(mod2, mod3)
-      
-      p_H01 <-test_H01$`Pr(>F)`[2]
-      p_H02 <-test_H02$`Pr(>F)`[2]
-      p_H03 <-test_H03$`Pr(>F)`[2]
-      
-      if (any(is.na(c(p_H01,p_H02, p_H03)))){
-        warning(paste("Modelo inválido para,", s_name, "-se omite"))
-        next
-      }   
-      
-      #p-value total del modelo auxiliar (significancia global)
-      #f_estad <- summary(mod3)$fstatistic
-      #p_total <- pf(f_estad[1], f_estad[2], f_estad[3], lower.tail =FALSE)
-      
-      #Secuencia de decisión
-      min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
-      if (pvalue.LM1>alfa) {
-        recomendado <- "Modelo Lineal"
-      } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa) { 
-        recomendado <-"LSTR"
-      } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa) {
-        recomendado <- "ESTR"
-      } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa) {
-        recomendado <- "LSTR"
-      } else recomendado <- "Modelo Lineal"
+    #Secuencia de decisión
+    min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
+    if (pvalue.LM1>alfa) {
+      recomendado <- "Modelo Lineal"
+    } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa) { 
+      recomendado <-"LSTR"
+    } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa) {
+      recomendado <- "ESTR"
+    } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa) {
+      recomendado <- "LSTR"
+    } else recomendado <- "Modelo Lineal"
     } 
     
     resultados[[s_name]] <- list(
@@ -270,8 +241,6 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
       p_H04 = pvalue.LM4,
       recomendado = recomendado
     )
-    
-  }
   
   resultados <- do.call(rbind, lapply(resultados, as.data.frame))
   rownames(resultados) <- NULL
