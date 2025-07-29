@@ -127,7 +127,7 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) { 
+terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x, alfa) { 
 
   #y: serie explicada
   #x: serie explicativa
@@ -138,6 +138,7 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) {
   #Función para crear el vector de variables explicativas respetando sus rezagos
   
   if (is.null(x)) {
+    rez_x=NULL
     rez_max<-rez_y
     
     #Matriz de rezagos de y como variables explicativas
@@ -159,6 +160,7 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) {
     
   } else {
     
+    rez_x!=NULL 
     rez_max <- max(rez_x, rez_y) #rezago máximo general
   
    #Matriz de variables explicativas hasta el rezago máximo
@@ -291,9 +293,9 @@ cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se seleciona
 #5.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
 ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x=NULL, 0.05)
 ENSO_NLtest
-cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-2 y la función de transición es una función logística LSTR')
+cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
-Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 2, steps = 3)
+Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 3)
 summary(Mod_STR_ENSO)
 cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-2 como variable de transición y una función logística como función de transición')
 
