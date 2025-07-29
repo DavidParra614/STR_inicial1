@@ -157,50 +157,53 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) {
     #Lista de variables de transición candidatas
     z_cand <- paste0('y_L', 1:rez_y)
     
-  } else rez_max <- max(rez_x, rez_y) #rezago máximo general
+  } else {
+    
+    rez_max <- max(rez_x, rez_y) #rezago máximo general
   
-  #Matriz de variables explicativas hasta el rezago máximo
-  base_explicativas <- embed(cbind(y,x), rez_max+1)
-  colnames(base_explicativas) <-c(
-    paste0('y_L', c('', 1:rez_max)),
-    paste0('x_L', c('', 1:rez_max))
-  )
+   #Matriz de variables explicativas hasta el rezago máximo
+   base_explicativas <- embed(cbind(y,x), rez_max+1)
+   colnames(base_explicativas) <-c(
+   paste0('y_L', c('', 1:rez_max)),
+   paste0('x_L', c('', 1:rez_max))
+   )
   
-  #Variable explicada
-  y_dep <- base_explicativas[, 'y_L']
+   #Variable explicada
+   y_dep <- base_explicativas[, 'y_L']
   
-  #Variables explicativas deseadas según sus rezagos
-  explicativas <- c(
-    paste0("y_L", 1:rez_y),
-    paste0("x_L", 1:rez_x)
-  )
+   #Variables explicativas deseadas según sus rezagos
+   explicativas <- c(
+   paste0("y_L", 1:rez_y),
+   paste0("x_L", 1:rez_x)
+   )
   
-  #Matriz de variables explicativas candidatas a ser variable de transición
-  X <- (base_explicativas[, explicativas])
-  data_explicativas <- as.data.frame(base_explicativas)
+   #Matriz de variables explicativas candidatas a ser variable de transición
+   X <- (base_explicativas[, explicativas])
+   data_explicativas <- as.data.frame(base_explicativas)
   
-  #Lista de variables de transición candidatas
-  z_cand <- c(
+   #Lista de variables de transición candidatas
+   z_cand <- c(
     paste0('y_L', 1:rez_y),
     paste0('x_L', 1:rez_x)
-  )
+   )
   
-  #Matriz de rezagos de y como variables explicativas
-  base_explicativas <- embed(y, rez_max+1)
-  colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+   #Matriz de rezagos de y como variables explicativas
+   base_explicativas <- embed(y, rez_max+1)
+   colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
   
-  #Variable explicada
-  y_dep <- base_explicativas[, 'y_L']
+   #Variable explicada
+   y_dep <- base_explicativas[, 'y_L']
   
-  #Rezagos de 'y' como variables explicativas 
-  explicativas <- paste0("y_L", 1:rez_y)
+   #Rezagos de 'y' como variables explicativas 
+   explicativas <- paste0("y_L", 1:rez_y)
   
-  #Matriz de variables explicativas candidatas a ser variable de transición
-  X <- (base_explicativas[, explicativas])
-  data_explicativas <- as.data.frame(base_explicativas)
+   #Matriz de variables explicativas candidatas a ser variable de transición
+   X <- (base_explicativas[, explicativas])
+   data_explicativas <- as.data.frame(base_explicativas)
   
-  #Lista de variables de transición candidatas
-  z_cand <- paste0('y_L', 1:rez_y)
+   #Lista de variables de transición candidatas
+   z_cand <- paste0('y_L', 1:rez_y)
+  }
   
   resultados <- list()
   
@@ -286,7 +289,7 @@ auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
 #5.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
-ENSO_NLtest <- terasvirta_testNL(ENSO, DINF, 5, 1, 0.05)
+ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x=NULL, 0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-2 y la función de transición es una función logística LSTR')
 
