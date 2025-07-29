@@ -127,7 +127,7 @@ DINFvsENSO <- data.frame(
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
-terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) { 
+terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) { 
 
   #y: serie explicada
   #x: serie explicativa
@@ -242,20 +242,21 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
   
 }
 
-ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 5, 0.05)
-
-
 #5. Estimación de un modelo STR para ENSO-------------------
 
 #5.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
 auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
-
 cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
-Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 1)
+#5.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
+ENSO_NLtest <- terasvirta_testNL(ENSO, DINF, 5, 1, 0.05)
+ENSO_NLtest
+cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-2 y la función de transición es una función logística LSTR')
+
+Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 2, steps = 3)
 summary(Mod_STR_ENSO)
-cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
+cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-2 como variable de transición y una función logística como función de transición')
 
 #6. Estimación de un modelo STR para DINF---------------------------------------
 
@@ -263,6 +264,11 @@ cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variabl
 
 Mod_ARDL_DINF <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order=24,selection = "AIC")
 Mod_ARDL_DINF$top_orders
+cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
+
+#6.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
+DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 24, 24, 0.05)
+DINF_NLtest
 
 
-?embed
+
