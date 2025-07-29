@@ -171,12 +171,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
   #Correr test de Teräsvirta para cada candidata a ser variable de transición
   for (s_name in z_cand)
   {
-    if (!(s_name %in% names(data_explicativas)))  {
-      warning(paste("No se encuentra", s_name, "En la base. Se omite.")) 
-      next
-    }
     s=data_explicativas[[s_name]]
-    
     s2=s^2 #Variable de transición al cuadrado
     s3=s^3 #Variable de transición al cubo
     
@@ -224,11 +219,11 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
     min_rechazo <- min(pvalue.LM2, pvalue.LM3, pvalue.LM4) #Hipótesis con mayor rechazo
     if (pvalue.LM1>alfa) {
       recomendado <- "Modelo Lineal"
-    } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa) { 
+    } else if (min_rechazo==pvalue.LM2 & min_rechazo<alfa & pvalue.LM1<alfa) { 
       recomendado <-"LSTR"
-    } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa) {
+    } else if (min_rechazo==pvalue.LM3 & min_rechazo < alfa & pvalue.LM1<alfa) {
       recomendado <- "ESTR"
-    } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa) {
+    } else if (min_rechazo==pvalue.LM4 & min_rechazo < alfa & pvalue.LM1<alfa) {
       recomendado <- "LSTR"
     } else recomendado <- "Modelo Lineal"
     } 
@@ -265,6 +260,7 @@ auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 25, 5, 0.05)
 ENSO_NLtest
 
+?star()
 
 pruebaARDL <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order= 30,selection = "AIC")
 pruebaARDL$top_orders
