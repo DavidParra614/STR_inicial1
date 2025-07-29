@@ -266,14 +266,74 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
   
 }
 
-#5. Estimación de un modelo STR para ENSO-------------------
+#5. Función para estimar un modelo STR por máxima verosimilitud-----------------
+str_mod <- function(y, x, s, rex_y, rez_x, G) {
+  #y = Variable endógena explicada
+  #x = Variable exógena explicativa
+  #s = Variable de transición
+  #rez_y = rezagos de la variable endógena 'y' que actúan como variables explicativas
+  #rez_x = rezagos de la variable exógena 'x' que actúan como variables explicativas
+  #G = Función de transición 
+  #Matriz de variables explicativas hasta el rezago máximo
+  
+  G=c('LSTR', 'ESTR') #La función de transición es logística (LSTR) o exponencial (ESTR)
+  
+  if (is.null(x)) {
+    in.null(rez_x)
+    
+    #Matriz de variables explicativas
+    base_explicativas <- embed(cbind(y,x), rez_max+1)
+    colnames(base_explicativas) <-c(
+    paste0('y_L', c('', 1:rez_max)),
+    paste0('x_L', c('', 1:rez_max))
+    )
+  
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L']
+  
+    #Variables explicativas deseadas según sus rezagos
+    explicativas <- c(
+    paste0("y_L", 1:rez_y),
+    paste0("x_L", 1:rez_x)
+    )
+  
+    #Matriz de variables explicativas candidatas a ser variable de transición
+    X <- (base_explicativas[, explicativas])
+    data_explicativas <- as.data.frame(base_explicativas)
+  } else {
+    rez_x=!NULL 
+    
+    #Matriz de variables explicativas
+    base_explicativas <- embed(y, rez_max+1)
+    colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+    
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L']
+    
+    #Variables explicativas deseadas según sus rezagos
+    explicativas <- paste0("y_L", 1:rez_y)
+    
+    #Matriz de variables explicativas candidatas a ser variable de transición
+    X <- (base_explicativas[, explicativas])
+    data_explicativas <- as.data.frame(base_explicativas)
+  }
 
-#5.1 Selección de rezagos de ENSO como variable explicativa p1-----
+  if (G=='LSTR') {
+    f<- 1/1+exp(-(gamma*(s-c)))
+  } else if (G=='ESTR') {
+    f<- 1-exp(-(gamma*((s-c)^2)))
+  } else 
+    stor("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
+}
+
+#6. Estimación de un modelo STR para ENSO-------------------
+
+#6.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
 auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
-#5.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
+#6.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
 ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x, 0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
@@ -282,15 +342,15 @@ Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 3)
 summary(Mod_STR_ENSO)
 cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-2 como variable de transición y una función logística como función de transición')
 
-#6. Estimación de un modelo STR para DINF---------------------------------------
+#7. Estimación de un modelo STR para DINF---------------------------------------
 
-#6.1. Estimación de un modelo ARDL para seleccionar los rezagos de DINF y de ENSO explicativos--------------
+#7.1. Estimación de un modelo ARDL para seleccionar los rezagos de DINF y de ENSO explicativos--------------
 
 Mod_ARDL_DINF <- auto_ardl(DINF~ ENSO, data=DINFvsENSO, max_order=c(25,5),selection = "AIC")
 Mod_ARDL_DINF$top_orders
 cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
 
-#6.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
+#7.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
 DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 3, 5, 0.05)
 print(DINF_NLtest)
 
