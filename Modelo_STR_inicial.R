@@ -137,8 +137,27 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) {
   
   #Función para crear el vector de variables explicativas respetando sus rezagos
   
-  if (x!NULL) { 
-  rez_max <- max(rez_x, rez_y) #rezago máximo general
+  if (is.null(x)) {
+    rez_max<-rez_y
+    
+    #Matriz de rezagos de y como variables explicativas
+    base_explicativas <- embed(y, rez_max+1)
+    colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+    
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L']
+    
+    #Rezagos de 'y' como variables explicativas 
+    explicativas <- paste0("y_L", 1:rez_y)
+    
+    #Matriz de variables explicativas candidatas a ser variable de transición
+    X <- (base_explicativas[, explicativas])
+    data_explicativas <- as.data.frame(base_explicativas)
+    
+    #Lista de variables de transición candidatas
+    z_cand <- paste0('y_L', 1:rez_y)
+    
+  } else rez_max <- max(rez_x, rez_y) #rezago máximo general
   
   #Matriz de variables explicativas hasta el rezago máximo
   base_explicativas <- embed(cbind(y,x), rez_max+1)
@@ -165,7 +184,6 @@ terasvirta_testNL <- function(y, x=NULL, rez_y, rez_x=NULL, alfa) {
     paste0('y_L', 1:rez_y),
     paste0('x_L', 1:rez_x)
   )
-  } else rez_max<-rez_y
   
   #Matriz de rezagos de y como variables explicativas
   base_explicativas <- embed(y, rez_max+1)
