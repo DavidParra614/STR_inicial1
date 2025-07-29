@@ -244,23 +244,21 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa)
   
 }
 
+ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 25, 5, 0.05)
+ENSO_NLtes
+
 #5. Estimación de un modelo STR para ENSO-------------------
 
 #5.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
 auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 
-#La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa
+cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
-#4.2 Estimar distintos STR para ENSO teniendo como variables de transición candidatas ENSO_t-i para i=1,...,5
+Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 1)
+summary(Mod_STR_ENSO)
+cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
-
-
-
-ENSO_NLtest <- terasvirta_testNL(DINF, ENSO, 25, 5, 0.05)
-ENSO_NLtest
-
-?star()
 
 pruebaARDL <- auto_ardl(DINF~ENSO, data=DINFvsENSO, max_order= 30,selection = "AIC")
 pruebaARDL$top_orders
