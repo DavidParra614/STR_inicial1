@@ -273,58 +273,97 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   #s = Variable de transición
   #rez_y = rezagos de la variable endógena 'y' que actúan como variables explicativas
   #rez_x = rezagos de la variable exógena 'x' que actúan como variables explicativas
-  #G = Función de transición 
+  #G = Función de transición, 'LSTR' si es logística o 'ESTR' si es exponencial
+  
   #Matriz de variables explicativas hasta el rezago máximo
-  
-  G=c('LSTR', 'ESTR') #La función de transición es logística (LSTR) o exponencial (ESTR)
-  
   if (is.null(x)) {
-    in.null(rez_x)
+    rez_x=NULL
+    rez_max=rez_y
     
-    #Matriz de variables explicativas
-    base_explicativas <- embed(cbind(y,x), rez_max+1)
-    colnames(base_explicativas) <-c(
-    paste0('y_L', c('', 1:rez_max)),
-    paste0('x_L', c('', 1:rez_max))
-    )
-  
-    #Variable explicada
-    y_dep <- base_explicativas[, 'y_L']
-  
-    #Variables explicativas deseadas según sus rezagos
-    explicativas <- c(
-    paste0("y_L", 1:rez_y),
-    paste0("x_L", 1:rez_x)
-    )
-  
-    #Matriz de variables explicativas candidatas a ser variable de transición
-    X <- (base_explicativas[, explicativas])
-    data_explicativas <- as.data.frame(base_explicativas)
+  #Matriz de variables explicativas
+  base_explicativas <- embed(y, rez_max+1)
+  colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+    
+  #Variable explicada
+  y_dep <- base_explicativas[, 'y_L']
+    
+  #Variables explicativas deseadas según sus rezagos
+  explicativas <- paste0("y_L", 1:rez_y)
+    
+  #Matriz de variables explicativas candidatas a ser variable de transición
+  X <- (base_explicativas[, explicativas])
+  data_explicativas <- as.data.frame(base_explicativas)
+    
+  #Variable de transición ajustada 
+  s <- embed(s, rez_max + 1)[, 1] #para que coincida con el número de filas de la matriz explicativa
   } else {
-    rez_x=!NULL 
+
+  rez_x=!NULL 
+  rez_max=max(rez_x,rez_y)
     
-    #Matriz de variables explicativas
-    base_explicativas <- embed(y, rez_max+1)
-    colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+  #Matriz de variables explicativas
+  base_explicativas <- embed(cbind(y,x), rez_max+1)
+  colnames(base_explicativas) <-c(
+  paste0('y_L', c('', 1:rez_max)),
+  paste0('x_L', c('', 1:rez_max))
+  )
     
-    #Variable explicada
-    y_dep <- base_explicativas[, 'y_L']
+  #Variable explicada
+  y_dep <- base_explicativas[, 'y_L']
     
-    #Variables explicativas deseadas según sus rezagos
-    explicativas <- paste0("y_L", 1:rez_y)
+  #Variables explicativas deseadas según sus rezagos
+  explicativas <- c(
+  paste0("y_L", 1:rez_y),
+  paste0("x_L", 1:rez_x)
+  )
     
-    #Matriz de variables explicativas candidatas a ser variable de transición
-    X <- (base_explicativas[, explicativas])
-    data_explicativas <- as.data.frame(base_explicativas)
+  #Variables explicativas
+  X <- (base_explicativas[, explicativas])
+  data_explicativas <- as.data.frame(base_explicativas)
   }
 
+  #Función de transición
+  func_trans <- function(s, gamma, c) {  
   if (G=='LSTR') {
-    f<- 1/1+exp(-(gamma*(s-c)))
+  return(1/1+exp(-gamma*(s-c)))
   } else if (G=='ESTR') {
-    f<- 1-exp(-(gamma*((s-c)^2)))
+  return(1-exp(-gamma*((s-c)^2)))
   } else 
-    stor("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
+  stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
+
+  #Costrucción del logaritmo de verosimilitud
+  Logverosimil_funcion <- function(phi_0, theta_0, parametros) {
+  k <- ncol(X)                                       #número de variables explicativas
+  Phi <- parametros[1:k]                             #parámetros de la parte lineal
+  names(Phi) <- paste0('phi_', 1:length(Phi))        #nombres de los parámetros lineales
+  theta <- parametros[k+1:2*k]                       #parámetros de la parte no lineal
+  names_(theta) <- paste0('theta_', 1:length(theta)) #nombres de los parámetros no lineales
+  gamma <- parametros[2*k+1]                         #Parámetro de velocidad de transición
+  c <- parametro[2*k+2]                              #Umbral de transición
+    
+  f_trans <- func_trans(s, gamma, c)                                #Función de transición
+  y_estim <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
+  residuos <- y_dep - y_estim                                       #Residuos del modelo
+  sigma2 <- mean(residuos^2)                                        #Sigma^2 en el logaritmo de verosimilitud
+  Logverosimil <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1) #Logaritmo de verosimilitud
+  return(-Logverosimil)
+  }
+  
+  #Valores iniciales de los parámetros
+  param_inicio <- c(rep(0,2*k), gamma=1, c=mean(s), phi_0=0, theta_0=0)
+  
+  #Optimización del logaritmo de verosimilitud
+  resultado <- optim(par = c(theta, Phi),
+                     fn = Logverosimil,
+                     X = X,
+                     y_dep = y_dep,
+                     method = "BFGS")
+  
+  param_estim <- resultado$par
+  
+    }
 }
+
 
 #6. Estimación de un modelo STR para ENSO-------------------
 
