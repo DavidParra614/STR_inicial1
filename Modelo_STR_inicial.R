@@ -267,7 +267,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
 }
 
 #5. Función para estimar un modelo STR por máxima verosimilitud-----------------
-str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
+str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #y = Variable endógena explicada
   #x = Variable exógena explicativa
   #s = Variable de la cual se usará algunos de sus rezagos para ser variable de transición
@@ -337,22 +337,22 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   }
   #Costrucción del logaritmo de verosimilitud
   Logverosimil_funcion <- function(parametros) {
-  k <- ncol(X)                                       #número de variables explicativas
-  Phi <- parametros[1:k]                             #parámetros de la parte lineal
-  names(Phi) <- paste0('phi_', 1:k)                  #nombres de los parámetros lineales
-  theta <- parametros[(k+1):(2*k)]                   #parámetros de la parte no lineal
-  names(theta) <- paste0('theta_', 1:k)              #nombres de los parámetros no lineales
-  gamma <- parametros[(2*k)+1]                       #Parámetro de velocidad de transición
-  c <- parametros[(2*k)+2]                           #Umbral de transición
-  phi_0 <- parametros[(2*k)+3]                       #Intercepto de la parte lineal
-  theta_0 <- parametros[(2*k)+4]                     #Intercepto de la parte no lineal
+    k            <- ncol(X)                             #número de variables explicativas
+    Phi          <- parametros[1:k]                     #parámetros de la parte lineal
+    names(Phi)   <- paste0('phi_', 1:k)                 #nombres de los parámetros lineales
+    theta        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
+    names(theta) <- paste0('theta_', 1:k)               #nombres de los parámetros no lineales
+    gamma        <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
+    c            <- parametros[(2*k)+2]                 #Umbral de transición
+    phi_0        <- parametros[(2*k)+3]                 #Intercepto de la parte lineal
+    theta_0      <- parametros[(2*k)+4]                 #Intercepto de la parte no lineal
   
-  f_trans <- func_trans(z, gamma, c)                                #Función de transición
-  y_estim <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
-  residuos <- y_dep - y_estim                                       #Residuos del modelo
-  sigma2 <- mean(residuos^2)                                        #Sigma^2 en el logaritmo de verosimilitud
-  Logverosimil <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1) #Logaritmo de verosimilitud
-  return(-Logverosimil)
+    f_trans      <- func_trans(z, gamma, c)                                #Función de transición
+    y_estim      <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
+    residuos     <- y_dep - y_estim                                        #Residuos del modelo
+    sigma2       <- mean(residuos^2)                                       #Sigma^2 en el logaritmo de verosimilitud
+    Logverosimil <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)      #Logaritmo de verosimilitud
+    return(-Logverosimil)
   }
   
   #Valores iniciales de los parámetros
@@ -360,7 +360,7 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par = param_inicio,
-                     fn = Logverosimil,
+                     fn = Logverosimil_funcion,
                      method = "BFGS")
   
   return(list(parámetros = resultado$par, logLik = -resultado$value))
@@ -368,6 +368,8 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
 }
 
 DINF_STR <- str_mod(DINF, ENSO, ENSO, 3, 24, 5, "LSTR")
+
+
 
 #6. Estimación de un modelo STR para ENSO-------------------
 
