@@ -178,7 +178,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
    paste0("y_L", 1:rez_y),
    paste0("x_L", 1:rez_x)
    )
-  
+   
    #Matriz de variables explicativas candidatas a ser variable de transición
    X <- (base_explicativas[, explicativas])
    data_explicativas <- as.data.frame(base_explicativas)
@@ -316,10 +316,11 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   
   #Variables explicativas
   X <- (base_explicativas[, explicativas])
+  k <- ncol(X) #número de variables explicativas
   
   #Variable de transición ajustada 
   base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
-  colnames(base_s) <- paste0("s_L", 1:rez_max)
+  colnames(base_s) <- paste0("s_L", 0:rez_max)
   
   #Extraer la variable de transición
   z <- base_s[, paste0("s_L", rez_s)]
