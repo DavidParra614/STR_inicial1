@@ -160,7 +160,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
     
   } else {
     
-    rez_x!=NULL 
+    !is.null(rez_x) 
     rez_max <- max(rez_x, rez_y) #rezago máximo general
   
    #Matriz de variables explicativas hasta el rezago máximo
@@ -293,7 +293,7 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   
   } else {
 
-  rez_x=!NULL 
+  !is.null(rez_x) 
   rez_max=max(rez_x,rez_y)
     
   #Matriz de variables explicativas
@@ -322,7 +322,7 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   colnames(base_s) <- paste0("s_L", 1:rez_max)
   
   #Extraer la variable de transición
-  z <- base_s[, paste0("s_L", s_lag)]
+  z <- base_s[, paste0("s_L", rez_s)]
   
   #Función de transición
   func_trans <- function(z, gamma, c) {  
@@ -360,15 +360,13 @@ str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par = param_inicio,
                      fn = Logverosimil,
-                     X = X,
-                     y_dep = y_dep,
                      method = "BFGS")
   
-  return(list(parámetros = resultados$par, logLik = -resultados$value))
+  return(list(parámetros = resultado$par, logLik = -resultado$value))
   
 }
 
-
+DINF_STR <- str_mod(DINF, ENSO, ENSO, 3, 24, 5, "LSTR")
 
 #6. Estimación de un modelo STR para ENSO-------------------
 
