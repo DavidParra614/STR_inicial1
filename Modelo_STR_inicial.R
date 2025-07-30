@@ -281,38 +281,38 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     rez_x=NULL
     rez_max=rez_y
     
-  #Matriz de variables explicativas
-  base_explicativas <- embed(y, rez_max+1)
-  colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+    #Matriz de variables explicativas
+    base_explicativas <- embed(y, rez_max+1)
+    colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
     
-  #Variable explicada
-  y_dep <- base_explicativas[, 'y_L']
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L']
     
-  #Variables explicativas deseadas según sus rezagos
-  explicativas <- paste0("y_L", 1:rez_y)
+    #Variables explicativas deseadas según sus rezagos
+    explicativas <- paste0("y_L", 1:rez_y)
   
-  } else {
+    } else {
 
-  !is.null(rez_x) 
-  rez_max=max(rez_x,rez_y)
+    !is.null(rez_x) 
+    rez_max=max(rez_x,rez_y)
     
-  #Matriz de variables explicativas
-  base_explicativas <- embed(cbind(y,x), rez_max+1)
-  colnames(base_explicativas) <-c(
-  paste0('y_L', c('', 1:rez_max)),
-  paste0('x_L', c('', 1:rez_max))
-  )
+    #Matriz de variables explicativas
+    base_explicativas <- embed(cbind(y,x), rez_max+1)
+    colnames(base_explicativas) <-c(
+    paste0('y_L', c('', 1:rez_max)),
+    paste0('x_L', c('', 1:rez_max))
+    )
     
-  #Variable explicada
-  y_dep <- base_explicativas[, 'y_L']
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L']
     
-  #Variables explicativas deseadas según sus rezagos
-  explicativas <- c(
-  paste0("y_L", 1:rez_y),
-  paste0("x_L", 1:rez_x)
-  )
+    #Variables explicativas deseadas según sus rezagos
+    explicativas <- c(
+    paste0("y_L", 1:rez_y),
+    paste0("x_L", 1:rez_x)
+    )
     
-  }
+    }
   
   #Variables explicativas
   X <- (base_explicativas[, explicativas])
@@ -327,31 +327,31 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   
   #Función de transición
   func_trans <- function(z, gamma, c) {  
-  if (G=='LSTR') {
-  return(1/(1+exp(-gamma*(z-c))))
-  } else if (G=='ESTR') {
-  return(1-exp(-gamma*((z-c)^2)))
-  } else {
-    stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
-  }
+    if (G=='LSTR') {
+      return(1/(1+exp(-gamma*(z-c))))
+    } else if (G=='ESTR') {
+      return(1-exp(-gamma*((z-c)^2)))
+    } else {
+      stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
+    }
   }
   #Costrucción del logaritmo de verosimilitud
   Logverosimil_funcion <- function(parametros) {
-    k            <- ncol(X)                             #número de variables explicativas
-    Phi          <- parametros[1:k]                     #parámetros de la parte lineal
-    names(Phi)   <- paste0('phi_', 1:k)                 #nombres de los parámetros lineales
-    theta        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
-    names(theta) <- paste0('theta_', 1:k)               #nombres de los parámetros no lineales
-    gamma        <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
-    c            <- parametros[(2*k)+2]                 #Umbral de transición
-    phi_0        <- parametros[(2*k)+3]                 #Intercepto de la parte lineal
-    theta_0      <- parametros[(2*k)+4]                 #Intercepto de la parte no lineal
+    k                     <- ncol(X)                             #número de variables explicativas
+    Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
+    names(Phi_lineal)     <- paste0('phi_', 1:k)                 #nombres de los parámetros lineales
+    theta_nolineal        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
+    names(theta_nolineal) <- paste0('theta_', 1:k)               #nombres de los parámetros no lineales
+    gamma                 <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
+    c                     <- parametros[(2*k)+2]                 #Umbral de transición
+    phi_0                 <- parametros[(2*k)+3]                 #Intercepto de la parte lineal
+    theta_0               <- parametros[(2*k)+4]                 #Intercepto de la parte no lineal
   
-    f_trans      <- func_trans(z, gamma, c)                                #Función de transición
-    y_estim      <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
-    residuos     <- y_dep - y_estim                                        #Residuos del modelo
-    sigma2       <- mean(residuos^2)                                       #Sigma^2 en el logaritmo de verosimilitud
-    Logverosimil <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)      #Logaritmo de verosimilitud
+    f_trans               <- func_trans(z, gamma, c)                                #Función de transición
+    y_estim               <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
+    residuos              <- y_dep - y_estim                                        #Residuos del modelo
+    sigma2                <- mean(residuos^2)                                       #Sigma^2 en el logaritmo de verosimilitud
+    Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)      #Logaritmo de verosimilitud
     return(-Logverosimil)
   }
   
