@@ -325,7 +325,7 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   #Función de transición
   func_trans <- function(s, gamma, c) {  
   if (G=='LSTR') {
-  return(1/1+exp(-gamma*(s-c)))
+  return(1/(1+exp(-gamma*(s-c))))
   } else if (G=='ESTR') {
   return(1-exp(-gamma*((s-c)^2)))
   } else 
@@ -336,8 +336,8 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   k <- ncol(X)                                       #número de variables explicativas
   Phi <- parametros[1:k]                             #parámetros de la parte lineal
   names(Phi) <- paste0('phi_', 1:length(Phi))        #nombres de los parámetros lineales
-  theta <- parametros[k+1:2*k]                       #parámetros de la parte no lineal
-  names_(theta) <- paste0('theta_', 1:length(theta)) #nombres de los parámetros no lineales
+  theta <- parametros[(k+1):(2*k)]                       #parámetros de la parte no lineal
+  names(theta) <- paste0('theta_', 1:length(theta)) #nombres de los parámetros no lineales
   gamma <- parametros[2*k+1]                         #Parámetro de velocidad de transición
   c <- parametro[2*k+2]                              #Umbral de transición
     
@@ -353,13 +353,13 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   param_inicio <- c(rep(0,2*k), gamma=1, c=mean(s), phi_0=0, theta_0=0)
   
   #Optimización del logaritmo de verosimilitud
-  resultado <- optim(par = c(theta, Phi),
+  resultado <- optim(par = param_inicio,
                      fn = Logverosimil,
                      X = X,
                      y_dep = y_dep,
                      method = "BFGS")
   
-  param_estim <- resultado$par
+  return(list(parámetros = resultados$par, Logverosimil = -resultados$value))
   
     }
 }
