@@ -267,10 +267,11 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
 }
 
 #5. Función para estimar un modelo STR por máxima verosimilitud-----------------
-str_mod <- function(y, x, s, rex_y, rez_x, G) {
+str_mod <- function(y, x=NULL, s, rez_s, rex_y, rez_x, G) {
   #y = Variable endógena explicada
   #x = Variable exógena explicativa
-  #s = Variable de transición
+  #s = Variable de la cual se usará algunos de sus rezagos para ser variable de transición
+  #rez_s = Rezago de la variable s que se usará como variable de transición
   #rez_y = rezagos de la variable endógena 'y' que actúan como variables explicativas
   #rez_x = rezagos de la variable exógena 'x' que actúan como variables explicativas
   #G = Función de transición, 'LSTR' si es logística o 'ESTR' si es exponencial
@@ -289,9 +290,6 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
     
   #Variables explicativas deseadas según sus rezagos
   explicativas <- paste0("y_L", 1:rez_y)
-    
-  #Matriz de variables explicativas candidatas a ser variable de transición
-  X <- (base_explicativas[, explicativas])
   
   } else {
 
@@ -314,19 +312,24 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   paste0("x_L", 1:rez_x)
   )
     
-  #Variables explicativas
-  X <- (base_explicativas[, explicativas])
   }
   
+  #Variables explicativas
+  X <- (base_explicativas[, explicativas])
+  
   #Variable de transición ajustada 
-  s <- embed(s, rez_max + 1)[, 1] #para que coincida con el número de filas de la matriz explicativa
-
+  base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
+  colnames(base_s) <- paste0("s_L", 1:rez_max)
+  
+  #Extraer la variable de transición
+  z <- base_s[, paste0("s_L", s_lag)]
+  
   #Función de transición
-  func_trans <- function(s, gamma, c) {  
+  func_trans <- function(z, gamma, c) {  
   if (G=='LSTR') {
-  return(1/(1+exp(-gamma*(s-c))))
+  return(1/(1+exp(-gamma*(z-c))))
   } else if (G=='ESTR') {
-  return(1-exp(-gamma*((s-c)^2)))
+  return(1-exp(-gamma*((z-c)^2)))
   } else {
     stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
   }
@@ -343,7 +346,7 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
   phi_0 <- parametros[(2*k)+3]                       #Intercepto de la parte lineal
   theta_0 <- parametros[(2*k)+4]                     #Intercepto de la parte no lineal
   
-  f_trans <- func_trans(s, gamma, c)                                #Función de transición
+  f_trans <- func_trans(z, gamma, c)                                #Función de transición
   y_estim <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
   residuos <- y_dep - y_estim                                       #Residuos del modelo
   sigma2 <- mean(residuos^2)                                        #Sigma^2 en el logaritmo de verosimilitud
@@ -361,7 +364,7 @@ str_mod <- function(y, x, s, rex_y, rez_x, G) {
                      y_dep = y_dep,
                      method = "BFGS")
   
-  return(list(parámetros = resultados$par, Logverosimil = -resultados$value))
+  return(list(parámetros = resultados$par, logLik = -resultados$value))
   
 }
 
