@@ -359,7 +359,8 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par = param_inicio,
                      fn = Logverosimil_funcion,
-                     method = "BFGS")
+                     method = "BFGS",
+                     hessian=TRUE)
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
   names(param_lineal)   <- paste0('phi_', 0:(k-1))
@@ -389,10 +390,25 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
    tipo        = c('velocidad de transición', 'umbral de transición')
   )
   
-  #Tabla resumen total
-  tabla_global <- rbind(tabla_lin, tabla_nolin, tabla_otros)
-  rownames(tabla_global)
+  #Pruebas de signficancia 
+  coeficientes  <- resultado$par                  #coeficientes estimados
+  varcov_matriz <- solve(resultado$hessian)       #Matriz de varianzas y covarianzas de los estimadores
+  desv_est      <- sqrt(diag(varcov_matriz))      #Desviación estándar de los estimadores
+  z_est         <- coeficientes/desv_est          #Estadístico z según el test de Wald
+  p_values      <- 2 * (1 - pnorm(abs(z_est)))    #p-values arrojados
   
+  #Tabla resumen de la significancia de los parámetros estimados
+  tabla_signif <- data.frame(
+    desv_est    = desv_est ,
+    z_est       = z_est,
+    p_value     = p_values
+  )
+  
+  #Tabla resumen total
+  tabla_parametros <- rbind(tabla_lin, tabla_nolin, tabla_otros)
+  rownames(tabla_parametros)
+  tabla_global     <- cbind(tabla_parametros, tabla_signif)
+  rownames(tabla_global)
   
   return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
   
