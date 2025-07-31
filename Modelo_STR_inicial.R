@@ -357,10 +357,15 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s))
   
   #Optimización del logaritmo de verosimilitud
-  resultado <- optim(par = param_inicio,
-                     fn = Logverosimil_funcion,
-                     method = "BFGS",
-                     hessian=TRUE)
+  resultado <- optim(par     = param_inicio,
+                     fn      = Logverosimil_funcion,
+                     method  = "BFGS",
+                     hessian =TRUE,
+                     control =list(maxit=5000))
+  
+  print(resultado$convergence)
+  print(resultado$message)
+  
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
   names(param_lineal)   <- paste0('phi_', 0:(k-1))
