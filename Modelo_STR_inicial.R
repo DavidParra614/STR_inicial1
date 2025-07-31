@@ -282,7 +282,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     rez_max=rez_y
     
     #Matriz de variables explicativas
-    base_explicativas <- embed(y, rez_max+1)
+    base_explicativas           <- embed(y, rez_max+1)
     colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
     
     #Variable explicada
@@ -347,11 +347,11 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     phi_0                 <- parametros[(2*k)+3]                 #Intercepto de la parte lineal
     theta_0               <- parametros[(2*k)+4]                 #Intercepto de la parte no lineal
   
-    f_trans               <- func_trans(z, gamma, c)                                #Función de transición
-    y_estim               <- phi_0 + X %*% Phi + theta_0 + X %*% theta*f_trans      #Variable endógena estimada
-    residuos              <- y_dep - y_estim                                        #Residuos del modelo
-    sigma2                <- mean(residuos^2)                                       #Sigma^2 en el logaritmo de verosimilitud
-    Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)      #Logaritmo de verosimilitud
+    f_trans               <- func_trans(z, gamma, c)                                            #Función de transición
+    y_estim               <- phi_0 + X %*% Phi_lineal + theta_0 + X %*% theta_nolineal*f_trans  #Variable endógena estimada
+    residuos              <- y_dep - y_estim                                                    #Residuos del modelo
+    sigma2                <- mean(residuos^2)                                                   #Sigma^2 en el logaritmo de verosimilitud
+    Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)                  #Logaritmo de verosimilitud
     return(-Logverosimil)
   }
   
@@ -362,16 +362,49 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   resultado <- optim(par = param_inicio,
                      fn = Logverosimil_funcion,
                      method = "BFGS")
+  #Obtención de parámetros estimados con sus respectivos nombres
+  param_lineal          <- resultado$par[1:k]
+  names(param_lineal)   <- paste0('phi_', 1:k)
+  param_nolineal        <- resultado$par[(k+1):(2*k)]
+  names(param_nolineal) <- paste0('theta_', 1:k)
+  gamma                 <- resultado$par[(2*k)+1]
+  c                     <- resultado$par[(2*k)+2]
+  phi_0                 <- resultado$par[(2*k)+3]
+  theta_0               <- resultado$par[(2*k)+4]
   
-  return(list(parámetros = resultado$par, logLik = -resultado$value))
+  #Tabla resumen de los parámetros lineales
+  tabla_lin <- data.frame(
+    parametros      = explicativas, 
+    param_estim     = round(param_lineal, 6),
+    tipo            = 'phi (lineal)'
+  )
+  
+  #Tabla resumen de los parámetros  no lineales
+  tabla_nolin <- data.frame(
+    parametros  = explicativas, 
+    param_estim = round(param_nolineal, 6),
+    tipo        = 'theta (no lineal)'
+  )
+  
+  #Tabla resumen de los demás parámetro
+  tabla_otros <- data.frame(
+   parametros  = c('gamma', 'c', 'phi_0', 'theta_0'),
+   param_estim = round(c(gamma, c, phi_0, theta_0), 6),
+   tipo        = 'otros'
+  )
+  
+  #Tabla resumen total
+  tabla_global <- rbind(tabla_lin, tabla_nolin, tabla_otros)
+  rownames(tabla_global)
+  
+  
+  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
   
 }
 
-DINF_STR <- str_mod(DINF, ENSO, ENSO, 3, 24, 5, "LSTR")
-
-
-
 #6. Estimación de un modelo STR para ENSO-------------------
+
+ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
 
 #6.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
