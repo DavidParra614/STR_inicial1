@@ -315,7 +315,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     }
   
   #Variables explicativas
-  X <- (base_explicativas[, explicativas])
+  X <- cbind(intercepto=1, base_explicativas[, explicativas])
   k <- ncol(X) #número de variables explicativas
   
   #Variable de transición ajustada 
@@ -339,16 +339,14 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   Logverosimil_funcion <- function(parametros) {
     k                     <- ncol(X)                             #número de variables explicativas
     Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
-    names(Phi_lineal)     <- paste0('phi_', 1:k)                 #nombres de los parámetros lineales
+    names(Phi_lineal)     <- paste0('phi_', 0:(k-1))             #nombres de los parámetros lineales
     theta_nolineal        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
-    names(theta_nolineal) <- paste0('theta_', 1:k)               #nombres de los parámetros no lineales
+    names(theta_nolineal) <- paste0('theta_', 0:(k-1))          #nombres de los parámetros no lineales
     gamma                 <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
     c                     <- parametros[(2*k)+2]                 #Umbral de transición
-    phi_0                 <- parametros[(2*k)+3]                 #Intercepto de la parte lineal
-    theta_0               <- parametros[(2*k)+4]                 #Intercepto de la parte no lineal
-  
+
     f_trans               <- func_trans(z, gamma, c)                                            #Función de transición
-    y_estim               <- phi_0 + X %*% Phi_lineal + theta_0 + X %*% theta_nolineal*f_trans  #Variable endógena estimada
+    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans  #Variable endógena estimada
     residuos              <- y_dep - y_estim                                                    #Residuos del modelo
     sigma2                <- mean(residuos^2)                                                   #Sigma^2 en el logaritmo de verosimilitud
     Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)                  #Logaritmo de verosimilitud
@@ -356,7 +354,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   }
   
   #Valores iniciales de los parámetros
-  param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s), phi_0=0, theta_0=0)
+  param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s))
   
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par = param_inicio,
@@ -364,33 +362,31 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
                      method = "BFGS")
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
-  names(param_lineal)   <- paste0('phi_', 1:k)
+  names(param_lineal)   <- paste0('phi_', 0:(k-1))
   param_nolineal        <- resultado$par[(k+1):(2*k)]
-  names(param_nolineal) <- paste0('theta_', 1:k)
+  names(param_nolineal) <- paste0('theta_', 0:(k-1))
   gamma                 <- resultado$par[(2*k)+1]
   c                     <- resultado$par[(2*k)+2]
-  phi_0                 <- resultado$par[(2*k)+3]
-  theta_0               <- resultado$par[(2*k)+4]
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    parametros      = explicativas, 
+    var_param       = colnames(X), 
     param_estim     = round(param_lineal, 6),
     tipo            = 'phi (lineal)'
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    parametros  = explicativas, 
+    var_param   = colnames(X), 
     param_estim = round(param_nolineal, 6),
     tipo        = 'theta (no lineal)'
   )
   
   #Tabla resumen de los demás parámetro
   tabla_otros <- data.frame(
-   parametros  = c('gamma', 'c', 'phi_0', 'theta_0'),
-   param_estim = round(c(gamma, c, phi_0, theta_0), 6),
-   tipo        = 'otros'
+   var_param   = c('gamma', 'c'),
+   param_estim = round(c(gamma, c), 6),
+   tipo        = c('velocidad de transición', 'umbral de transición')
   )
   
   #Tabla resumen total
