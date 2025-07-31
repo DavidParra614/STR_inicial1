@@ -400,8 +400,6 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
 
 #6. Estimación de un modelo STR para ENSO-------------------
 
-ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
-
 #6.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
 auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
@@ -412,9 +410,8 @@ ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x, 0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
-Mod_STR_ENSO <- lstar(ENSO, m = 5, d = 3, steps = 3)
-summary(Mod_STR_ENSO)
-cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-2 como variable de transición y una función logística como función de transición')
+ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
+cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
 #7. Estimación de un modelo STR para DINF---------------------------------------
 
