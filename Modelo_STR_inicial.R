@@ -341,15 +341,15 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
     names(Phi_lineal)     <- paste0('phi_', 0:(k-1))             #nombres de los parámetros lineales
     theta_nolineal        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
-    names(theta_nolineal) <- paste0('theta_', 0:(k-1))          #nombres de los parámetros no lineales
+    names(theta_nolineal) <- paste0('theta_', 0:(k-1))           #nombres de los parámetros no lineales
     gamma                 <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
     c                     <- parametros[(2*k)+2]                 #Umbral de transición
 
-    f_trans               <- func_trans(z, gamma, c)                                            #Función de transición
-    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans  #Variable endógena estimada
-    residuos              <- y_dep - y_estim                                                    #Residuos del modelo
-    sigma2                <- mean(residuos^2)                                                   #Sigma^2 en el logaritmo de verosimilitud
-    Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)                  #Logaritmo de verosimilitud
+    f_trans               <- func_trans(z, gamma, c)                            #Función de transición
+    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans    #Variable endógena estimada
+    residuos              <- y_dep - y_estim                                    #Residuos del modelo
+    sigma2                <- mean(residuos^2)                                   #Sigma^2 en el logaritmo de verosimilitud
+    Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)  #Logaritmo de verosimilitud
     return(-Logverosimil)
   }
   
@@ -410,6 +410,16 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   tabla_global     <- cbind(tabla_parametros, tabla_signif)
   rownames(tabla_global)
   
+  tabla_global$signif <- ifelse(
+    tabla_global$p_value <= 0.001, '***',
+    ifelse(tabla_global$p_value <= 0.01, '**',
+           ifelse(tabla_global$p_value <= 0.5, '*',
+                 ifelse(tabla_global$p_value <= 0.1, '.', ''
+                        )
+                 )
+           )
+    )
+  
   return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
   
 }
@@ -422,7 +432,7 @@ auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
 cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
-ENSO_NLtest <- terasvirta_testNL(ENSO, x=NULL, 5, rez_x, 0.05)
+ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
@@ -438,9 +448,10 @@ Mod_ARDL_DINF$top_orders
 cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
 
 #7.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
-DINF_NLtest <- terasvirta_testNL(DINF, ENSO, 3, 5, 0.05)
-print(DINF_NLtest)
+DINF_NLtest <- terasvirta_testNL(y=DINF, x=ENSO, rez_y=24, rez_x=5, alfa=0.05)
+DINF_NLtest
 
-
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="LSTR")
+DINF_STR
 
 
