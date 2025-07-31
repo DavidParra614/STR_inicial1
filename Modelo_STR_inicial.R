@@ -372,14 +372,14 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   tabla_lin <- data.frame(
     var_param       = colnames(X), 
     param_estim     = round(param_lineal, 6),
-    tipo            = 'phi (lineal)'
+    tipo            = 'lineal'
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
     var_param   = colnames(X), 
     param_estim = round(param_nolineal, 6),
-    tipo        = 'theta (no lineal)'
+    tipo        = 'no lineal'
   )
   
   #Tabla resumen de los demás parámetro
