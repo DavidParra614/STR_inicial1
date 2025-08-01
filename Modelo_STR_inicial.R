@@ -98,7 +98,7 @@ print(INF_ksstest)
 #La serie INF NO es estacionaria
 
 #3.1.1 Serie INF diferenciada-----------------------------------
-DINF<-diff(INF) #Primera diferencia de INF
+DINF<-ts(DINF_ENSO$DINF, start = 1962, frequency = 12) #Primera diferencia de INF
 
 #Prueba de raíz unitaria según Hansen (1995) para DINF
 DINF_ksstest<-CADFtest(DINF, type="drift", max.lag.y=12, kerne1="ba",
@@ -120,10 +120,10 @@ print(ENSO_ksstest)
 #La serie ENSO es estacionaria, es decir, es I(0)
 
 #Se agrega crea un data.frame con DINF y ENSO
-ENSO<-ENSO[-1] #Se quta la primera observación para hacerlo compatible con la seri DINF
-DINFvsENSO <- data.frame(
- ENSO=ENSO,
- DINF=DINF)
+#ENSO<-ENSO[-1] #Se quta la primera observación para hacerlo compatible con la seri DINF
+#DINFvsENSO <- data.frame(
+ #ENSO=ENSO,
+ #DINF=DINF)
   
 #4. Creación de función para el test de NO linealidad, Terarsvirta, (1995)------
 
@@ -435,14 +435,15 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
 
 ENSO_ARIMA <- auto.arima(ENSO, max.p=20, max.q=0, ic="aic")
 ENSO_ARIMA
-cat('La cantidad máxima de rezagos es de 20, de los cuales se selecionan 3 rezagos para ENSO como variable explicativa')
+cat('La cantidad máxima de rezagos es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
-ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=3, rez_x, alfa=0.05)
+ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
 ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
+ENSO_STR
 cat('Modelo STR para la serie ENSO, teniendo 3 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
 #7. Estimación de un modelo STR para DINF---------------------------------------
@@ -492,16 +493,20 @@ cat('Modelo STR para la serie ENSO, teniendo 3 rezagos de sí misma como variabl
 
 DINF_ARIMAX <- auto.arimax(y=DINF, x=ENSO, rezmax_y=12, rezmax_x=12)
 DINF_ARIMAX
+cat('Utilizando 12 rezagos máximos tanto para DINF como para ENSO, el mejor modelo ARIMAX para DINF con ENSO como variable exógena, es aquel en el que hay 3 rezagos de DINF y 12 rezagos de ENSO')
 
 
 #7.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
 DINF_NLtest <- terasvirta_testNL(y=DINF, x=ENSO, rez_y=3, rez_x=12, alfa=0.05)
 DINF_NLtest
+cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-11 y la función de transición es una función logística ESTR')
+
 
 
 #7.3 Estimación del modelo STR--------------------------------------------------
-DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="LSTR")
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="ESTR")
 DINF_STR
+cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
 
 
 
