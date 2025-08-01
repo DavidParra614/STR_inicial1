@@ -446,11 +446,51 @@ cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variabl
 
 #7. Estimación de un modelo STR para DINF---------------------------------------
 
-#7.1. Estimación de un modelo ARDL para seleccionar los rezagos de DINF y de ENSO explicativos--------------
+#7.1. Estimación de un modelo ARIMAX para seleccionar los rezagos de DINF y de ENSO explicativos--------------
 
-Mod_ARDL_DINF <- auto_ardl(DINF~ ENSO, data=DINFvsENSO, max_order=c(25,5),selection = "AIC")
-Mod_ARDL_DINF$top_orders
-cat('Según los criterios AIC los rezagos explicativos de DINF son 24 al igual que los rezagos explicativos de ENSO')
+ #Creación de una función para estimar modelos ARIMAX y elegir los rezagos adecuados según crietrios AIC
+
+ auto.arimax <- function(y, x_exo, rezmax_y, rezmax_x) {
+   
+   # y: es la serie explicada o variable endógena
+   # x_exo: es la serie de una variable exógena cuyos rezagos explican a 'y'
+   # rezmax_x: son los rezagos máximos de la variable exógena 'x' que se tienen en cuenta para elegir
+   
+   resultados=list()
+   
+     for (k in 1:rezmax_x) {
+       x_exo.rez <- embed(x_exo, k + 1)[, -1]
+       y_rez <- y[(k + 1):length(y)]
+       
+       mod_arimax <- auto.arima(y_rez,
+                       xreg = x_exo.rez,
+                       max.p = rezmax_y, max.q = 0,
+                       max.d = 1,
+                       seasonal = FALSE,
+                       stepwise = FALSE,
+                       approximation = FALSE,
+                       ic="aic")
+       cat('Para', k, 'rezago(s) de x, el modelo seleccionó', mod_arimax$arma[1], 'rezago(s) de y con AIC =', AIC(mod_arimax), "\n")
+       
+       resultados[[k]] <- list(mod_arimax = mod_arimax,
+                               rezagos_x = k,
+                               rezagos_y = mod_arimax$arma[1],
+                               AIC = AIC(mod_arimax))
+     }
+       lista_AIC <- sapply(resultados, function(r) r$AIC)
+       mejor_rezago <- which.min(lista_AIC)
+       mejor_modelo <- resultados[[mejor_rezago]]
+       
+       cat("\n---\nMejor modelo:\n")
+       cat("Rezagos de x:", mejor_modelo$rezagos_x, "\n")
+       cat("Rezagos de y:", mejor_modelo$rezagos_y, "\n")
+       cat("AIC:", mejor_modelo$AIC, "\n")
+       
+       return(resultados)
+}
+
+DINF_ARIMAX <- auto.arimax(y=DINF, x=ENSO, rezmax_y=12, rezmax_x=12)
+
 
 #7.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
 DINF_NLtest <- terasvirta_testNL(y=DINF, x=ENSO, rez_y=24, rez_x=5, alfa=0.05)
@@ -458,5 +498,7 @@ DINF_NLtest
 
 DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="LSTR")
 DINF_STR
+
+
 
 
