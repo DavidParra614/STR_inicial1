@@ -388,7 +388,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     tipo        = 'no lineal'
   )
   
-  #Tabla resumen de los demás parámetro
+  #Tabla resumen de los demás parámetros
   tabla_otros <- data.frame(
    var_param   = c('gamma', 'c'),
    param_estim = round(c(gamma, c), 6),
@@ -425,7 +425,66 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
            )
     )
   
-  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
+  #Identificar si hay variables no significativas
+  var_nosignif <- tabla_global$var_param[
+  tabla_global$p_value > 0.1 & 
+  !tabla_global$var_param %in% c('gamma', 'c') &
+  tabla_global$tipo %in% c('lineal', 'no lineal')
+  ]
+  
+  if (length(var_nosignif) > 0) {
+  cat("\nIniciar eliminación automática de variables no significativas...\n")
+  
+  eliminadas <- character(0)
+  iter <- 1
+  
+  repeat {
+    #Identificar variable con mayor p-value para eliminar
+    var_eliminar <- tabla_global$var_param[
+      which.max(tabla_global$p_value[tabla_global$var_param %in% var_nosignif])
+    ]
+    
+    #Mostrar progreso
+    p_val <- round(tabla_global$p_value[tabla_global$var_param == var_eliminar], 4)
+    cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
+    eliminadas <- c(eliminadas, var_eliminar)
+    
+    #Ajustar rezagos según el tipo de variable eliminada
+    if (grepl("^y_L", var_eliminar)) {
+      rez_y <- max(1, rez_y - 1)  #No permitir rez_y < 1
+    } else if (grepl("^x_L", var_eliminar)) {
+      if (!is.null(rez_x)) rez_x <- max(1, rez_x - 1)  #No permitir rez_x < 1
+    }
+    
+    #Volver a estimar el modelo con los nuevos rezagos
+    modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y, rez_x, G)
+    
+    #Actualizar resultados
+    tabla_global <- modelo_simplificado$resumen
+    resultado$par <- modelo_simplificado$parámetros
+    resultado$value <- -modelo_simplificado$logLik
+    
+    #Verificar si quedan variables no significativas
+    var_nosignif <- tabla_global$var_param[
+    tabla_global$p_value > 0.1 & 
+    !tabla_global$var_param %in% c('gamma', 'c') &
+    tabla_global$tipo %in% c('lineal', 'no lineal')
+    ]
+    
+    #Criterio de detención
+    if (length(var_nosignif) == 0) {
+      cat("Proceso completado. No hay más variables no significativas.\n")
+      break
+    }
+    
+    iter <- iter + 1
+  }
+  
+  #Agregar información sobre variables eliminadas
+  resultado$eliminadas <- eliminadas
+  }
+  
+  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value, eliminadas = if (exists("eliminadas")) eliminadas else NULL))
   
 }
 
@@ -504,7 +563,7 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 
 
 #7.3 Estimación del modelo STR--------------------------------------------------
-DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="ESTR")
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=11, rez_y=3, rez_x=12, G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
 
