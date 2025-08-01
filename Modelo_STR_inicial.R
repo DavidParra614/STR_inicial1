@@ -433,16 +433,17 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
 
 #6.1 Selección de rezagos de ENSO como variable explicativa p1-----
 
-auto.arima(ENSO, max.p=2, max.q=0, ic="aic")
-cat('La cantidad máxima de rezagos para p3 es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
+ENSO_ARIMA <- auto.arima(ENSO, max.p=20, max.q=0, ic="aic")
+ENSO_ARIMA
+cat('La cantidad máxima de rezagos es de 20, de los cuales se selecionan 3 rezagos para ENSO como variable explicativa')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
-ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
+ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=3, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
 ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
-cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
+cat('Modelo STR para la serie ENSO, teniendo 3 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
 #7. Estimación de un modelo STR para DINF---------------------------------------
 
@@ -490,12 +491,15 @@ cat('Modelo STR para la serie ENSO, teniendo 5 rezagos de sí misma como variabl
 }
 
 DINF_ARIMAX <- auto.arimax(y=DINF, x=ENSO, rezmax_y=12, rezmax_x=12)
+DINF_ARIMAX
 
 
 #7.2 Aplicación del test de Terarsvirta (1995) para DINF------------------------
-DINF_NLtest <- terasvirta_testNL(y=DINF, x=ENSO, rez_y=24, rez_x=5, alfa=0.05)
+DINF_NLtest <- terasvirta_testNL(y=DINF, x=ENSO, rez_y=3, rez_x=12, alfa=0.05)
 DINF_NLtest
 
+
+#7.3 Estimación del modelo STR--------------------------------------------------
 DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y=24, rez_x=5, G="LSTR")
 DINF_STR
 
