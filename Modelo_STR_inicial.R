@@ -324,6 +324,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   
   #Variables explicativas
   X <- cbind(intercepto=1, base_explicativas[, explicativas])
+  W <- cbind(intercepto=1, base_explicativas[, explicativas])
   k <- ncol(X) #número de variables explicativas
   
   #Variable de transición ajustada 
@@ -354,7 +355,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     c                     <- parametros[(2*k)+2]                 #Umbral de transición
 
     f_trans               <- func_trans(z, gamma, c)                            #Función de transición
-    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans    #Variable endógena estimada
+    y_estim               <- X %*% Phi_lineal + W %*% theta_nolineal*f_trans    #Variable endógena estimada
     residuos              <- y_dep - y_estim                                    #Residuos del modelo
     sigma2                <- mean(residuos^2)                                   #Sigma^2 en el logaritmo de verosimilitud
     Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)  #Logaritmo de verosimilitud
@@ -433,88 +434,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
            )
     )
   
-  #Identificación de variables no signifcativas (p-value > 0.1)
-  
-  var_nosignif <- tabla_global$var_param[
-    tabla_global$p_value > 0.1 & 
-      !tabla_global$var_param %in% c('intercepto', 'gamma', 'c') &
-      tabla_global$tipo %in% c('lineal', 'no lineal')
-  ]
-  
-  
-  if (length(var_nosignif) > 0) {
-    cat('\nIniciar eliminación de variables no significativas...\n')
-    
-    eliminadas <- character(0)
-    iter <- 1
-    
-    repeat {
-      #Identificar variable con mayor p-value para eliminar
-      var_nosignif <- tabla_global$var_param[
-        tabla_global$p_value > 0.1 & 
-          !tabla_global$var_param %in% c('gamma', 'c', 'intercepto') &
-          tabla_global$tipo %in% c('lineal', 'no lineal')
-      ]
-      
-      if (length(var_nosignif) == 0) {
-        cat("Proceso completado. Se eliminaron las variables no significativas iterativamente.\n")
-        break
-      }
-      
-      #Extraer variable con mayor p-value
-      pvals_filtrados <- tabla_global$p_value[tabla_global$var_param %in% var_nosignif]
-      nombres_filtrados <- tabla_global$var_param[tabla_global$var_param %in% var_nosignif]
-      
-      if (length(pvals_filtrados) == 0) {
-        cat("No quedan variables candidatas para eliminar.\n")
-        break
-      }
-      
-      var_eliminar <- nombres_filtrados[which.max(pvals_filtrados)]
-      p_val <- round(pvals_filtrados[which.max(pvals_filtrados)], 6)
-      
-      
-      # Mostrar progreso
-      cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
-      eliminadas <- c(eliminadas, var_eliminar)
-      
-      #Ajustar rezagos según el tipo de variable eliminada
-      if (grepl("^y_L", var_eliminar)) {
-        rez_y <- max(1, rez_y - 1)  
-      } else if (grepl("^x_L", var_eliminar)) {
-        if (!is.null(rez_x)) rez_x <- max(1, rez_x - 1) 
-      }
-      
-      # Volver a estimar el modelo con los nuevos rezagos
-      modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y, rez_x, G)
-      
-      #Actualizar resultados
-      tabla_global <- modelo_simplificado$resumen
-      resultado$par <- modelo_simplificado$parámetros
-      resultado$value <- -modelo_simplificado$logLik
-      
-      #Verificar si aún existen variables no significativas
-      var_nosignif <- tabla_global$var_param[
-        tabla_global$p_value > 0.1 & 
-          !tabla_global$var_param %in% c('intercepto', 'gamma', 'c') &
-          tabla_global$tipo %in% c('lineal', 'no lineal')
-      ]
-      
-      #Criterio de finalización
-      if (length(var_nosignif) == 0) {
-        cat("Proceso completado. Se eliminaron las variables no significativas iteradamente.\n")
-        break
-      }
-      
-      iter <- iter + 1
-    }
-    
-    #Agregar información sobre variables eliminadas
-    resultado$eliminadas <- eliminadas
-  }
-  
-  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value, eliminadas = if (exists("eliminadas")) eliminadas else NULL))
-  
+  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
 }
 
 #6. Estimación de un modelo STR para ENSO-------------------
@@ -523,6 +443,8 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
 
 ENSO_ARIMA <- auto.arima(ENSO, max.p=20, max.q=0, ic="aic")
 ENSO_ARIMA
+
+summary(ENSO_ARIMA)
 cat('La cantidad máxima de rezagos es de 20, de los cuales se selecionan 5 rezagos para ENSO como variable explicativa')
 
 #6.2 Aplicación del test de Terarsvirta (1995) para ENSO------------------------
