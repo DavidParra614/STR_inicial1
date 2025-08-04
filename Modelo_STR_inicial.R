@@ -279,7 +279,11 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #Matriz de variables explicativas hasta el rezago máximo
   if (is.null(x)) {
     rez_x=NULL
-    rez_max=rez_y
+    rez_max <- rez_y
+    if (rez_s > rez_max) {
+      warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
+      rez_s <- rez_max
+    }
     
     #Matriz de variables explicativas
     base_explicativas           <- embed(y, rez_max+1)
@@ -294,7 +298,11 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     } else {
 
     !is.null(rez_x) 
-    rez_max=max(rez_x,rez_y)
+    rez_max <- max(rez_x,rez_y)
+    if (rez_s > rez_max) {
+      warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
+      rez_s <- rez_max
+    }
     
     #Matriz de variables explicativas
     base_explicativas <- embed(cbind(y,x), rez_max+1)
@@ -416,72 +424,93 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   rownames(tabla_global)
   
   tabla_global$signif <- ifelse(
-    tabla_global$p_value <= 0.001, '***',
-    ifelse(tabla_global$p_value <= 0.01, '**',
-           ifelse(tabla_global$p_value <= 0.5, '*',
-                 ifelse(tabla_global$p_value <= 0.1, '.', ''
+    tabla_global$p_value < 0.001, '***',
+    ifelse(tabla_global$p_value < 0.01, '**',
+           ifelse(tabla_global$p_value < 0.05, '*',
+                 ifelse(tabla_global$p_value < 0.1, '.', ''
                         )
                  )
            )
     )
   
-  #Identificar si hay variables no significativas
+  #Identificación de variables no signifcativas (p-value > 0.1)
+  
   var_nosignif <- tabla_global$var_param[
-  tabla_global$p_value > 0.1 & 
-  !tabla_global$var_param %in% c('gamma', 'c') &
-  tabla_global$tipo %in% c('lineal', 'no lineal')
+    tabla_global$p_value > 0.1 & 
+      !tabla_global$var_param %in% c('intercepto', 'gamma', 'c') &
+      tabla_global$tipo %in% c('lineal', 'no lineal')
   ]
   
+  
   if (length(var_nosignif) > 0) {
-  cat("\nIniciar eliminación automática de variables no significativas...\n")
-  
-  eliminadas <- character(0)
-  iter <- 1
-  
-  repeat {
-    #Identificar variable con mayor p-value para eliminar
-    var_eliminar <- tabla_global$var_param[
-      which.max(tabla_global$p_value[tabla_global$var_param %in% var_nosignif])
-    ]
+    cat('\nIniciar eliminación de variables no significativas...\n')
     
-    #Mostrar progreso
-    p_val <- round(tabla_global$p_value[tabla_global$var_param == var_eliminar], 4)
-    cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
-    eliminadas <- c(eliminadas, var_eliminar)
+    eliminadas <- character(0)
+    iter <- 1
     
-    #Ajustar rezagos según el tipo de variable eliminada
-    if (grepl("^y_L", var_eliminar)) {
-      rez_y <- max(1, rez_y - 1)  #No permitir rez_y < 1
-    } else if (grepl("^x_L", var_eliminar)) {
-      if (!is.null(rez_x)) rez_x <- max(1, rez_x - 1)  #No permitir rez_x < 1
+    repeat {
+      #Identificar variable con mayor p-value para eliminar
+      var_nosignif <- tabla_global$var_param[
+        tabla_global$p_value > 0.1 & 
+          !tabla_global$var_param %in% c('gamma', 'c', 'intercepto') &
+          tabla_global$tipo %in% c('lineal', 'no lineal')
+      ]
+      
+      if (length(var_nosignif) == 0) {
+        cat("Proceso completado. Se eliminaron las variables no significativas iterativamente.\n")
+        break
+      }
+      
+      #Extraer variable con mayor p-value
+      pvals_filtrados <- tabla_global$p_value[tabla_global$var_param %in% var_nosignif]
+      nombres_filtrados <- tabla_global$var_param[tabla_global$var_param %in% var_nosignif]
+      
+      if (length(pvals_filtrados) == 0) {
+        cat("No quedan variables candidatas para eliminar.\n")
+        break
+      }
+      
+      var_eliminar <- nombres_filtrados[which.max(pvals_filtrados)]
+      p_val <- round(pvals_filtrados[which.max(pvals_filtrados)], 6)
+      
+      
+      # Mostrar progreso
+      cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
+      eliminadas <- c(eliminadas, var_eliminar)
+      
+      #Ajustar rezagos según el tipo de variable eliminada
+      if (grepl("^y_L", var_eliminar)) {
+        rez_y <- max(1, rez_y - 1)  
+      } else if (grepl("^x_L", var_eliminar)) {
+        if (!is.null(rez_x)) rez_x <- max(1, rez_x - 1) 
+      }
+      
+      # Volver a estimar el modelo con los nuevos rezagos
+      modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y, rez_x, G)
+      
+      #Actualizar resultados
+      tabla_global <- modelo_simplificado$resumen
+      resultado$par <- modelo_simplificado$parámetros
+      resultado$value <- -modelo_simplificado$logLik
+      
+      #Verificar si aún existen variables no significativas
+      var_nosignif <- tabla_global$var_param[
+        tabla_global$p_value > 0.1 & 
+          !tabla_global$var_param %in% c('intercepto', 'gamma', 'c') &
+          tabla_global$tipo %in% c('lineal', 'no lineal')
+      ]
+      
+      #Criterio de finalización
+      if (length(var_nosignif) == 0) {
+        cat("Proceso completado. Se eliminaron las variables no significativas iteradamente.\n")
+        break
+      }
+      
+      iter <- iter + 1
     }
     
-    #Volver a estimar el modelo con los nuevos rezagos
-    modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y, rez_x, G)
-    
-    #Actualizar resultados
-    tabla_global <- modelo_simplificado$resumen
-    resultado$par <- modelo_simplificado$parámetros
-    resultado$value <- -modelo_simplificado$logLik
-    
-    #Verificar si quedan variables no significativas
-    var_nosignif <- tabla_global$var_param[
-    tabla_global$p_value > 0.1 & 
-    !tabla_global$var_param %in% c('gamma', 'c') &
-    tabla_global$tipo %in% c('lineal', 'no lineal')
-    ]
-    
-    #Criterio de detención
-    if (length(var_nosignif) == 0) {
-      cat("Proceso completado. No hay más variables no significativas.\n")
-      break
-    }
-    
-    iter <- iter + 1
-  }
-  
-  #Agregar información sobre variables eliminadas
-  resultado$eliminadas <- eliminadas
+    #Agregar información sobre variables eliminadas
+    resultado$eliminadas <- eliminadas
   }
   
   return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value, eliminadas = if (exists("eliminadas")) eliminadas else NULL))
