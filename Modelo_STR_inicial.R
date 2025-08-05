@@ -324,9 +324,9 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     }
   
   #Variables explicativas
-  X <- cbind(intercepto=1, base_explicativas[, explicativas]) 
-  
-  k <- ncol(X) #número de variables explicativas parte lineal
+  X <- cbind(intercepto=1, base_explicativas[, explicativas]) #Variables explicativas para la parte lineal
+  W <- cbind(intercepto=1, base_explicativas[, explicativas]) #Variables explicativas de la parte no lineal
+  k <- ncol(X) #número de variables explicativas de cada parte
   
   #Variable de transición ajustada 
   base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
@@ -361,7 +361,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     c                     <- parametros[(2*k)+2]                 #Umbral de transición
 
     f_trans               <- func_trans(z, gamma, c)                            #Función de transición
-    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans    #Variable endógena estimada
+    y_estim               <- X %*% Phi_lineal + W %*% theta_nolineal*f_trans    #Variable endógena estimada
     residuos              <- y_dep - y_estim                                    #Residuos del modelo
     sigma2                <- mean(residuos^2)                                   #Sigma^2 en el logaritmo de verosimilitud
     Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)  #Logaritmo de verosimilitud
@@ -454,98 +454,96 @@ str_simplificado <- function(str_original) {
   
   #str_original: Es la estimación de un modelo STR sin elininar variables no significativas 
   
-  #Llamar el modelo STR estimado con antelación
-  y            <- str_original$inputs$y
-  x            <- str_original$inputs$x
-  s            <- str_original$inputs$s
-  rez_s        <- str_original$inputs$rez_s
-  rez_y.actual <- str_original$inputs$rez_y
-  rez_x.actual <- str_original$inputs$rez_x
-  G            <- str_original$inputs$G
-  resumen      <- str_original$resumen
+  #Llamar resumen desde el modelo original
+  resumen    <- str_original$resumen
+  parametros <- str_original$parametros 
   
-  #Iniciar el modelo original si no se elimina nada
-  resultado <- str_original
+  #Iniciar rezagos actuales de 'y' y 'x, puesto que se irán actualizando
+  rez_y_lineal   <- c()
+  rez_y_nolineal <- c()
+  rez_x_lineal   <- c()
+  rez_x_nolineal <- c()
+  
+  #Extraer rezagos activos de las variables a partir del nombre de los parámetros
+  for (fila in resumen$var_param) {
+    if (grepl("^phi_\\d+\\.y_L", fila)) {
+      rez <- as.numeric(sub("^phi_\\d+\\.y_L", "", fila))
+      rez_y_lineal <- union(rez_y_lineal, rez)
+    } else if (grepl("^theta_\\d+\\.y_L", fila)) {
+      rez <- as.numeric(sub("^theta_\\d+\\.y_L", "", fila))
+      rez_y_nolineal <- union(rez_y_nolineal, rez)
+    } else if (grepl("^phi_\\d+\\.x_L", fila)) {
+      rez <- as.numeric(sub("^phi_\\d+\\.x_L", "", fila))
+      rez_x_lineal <- union(rez_x_lineal, rez)
+    } else if (grepl("^theta_\\d+\\.x_L", fila)) {
+      rez <- as.numeric(sub("^theta_\\d+\\.x_L", "", fila))
+      rez_x_nolineal <- union(rez_x_nolineal, rez)
+    }
+  }
+  
+  #Llamar argumentos necesarios del modelo original
+  y     <- str_original$y
+  x     <- str_original$x
+  s     <- str_original$s
+  rez_s <- str_original$rez_s
+  G     <- str_original$G
   
   #Proteger la variable de transición 
-  if (identical(s, y)) {
-    var_transicion <- paste0('y_L', rez_s)
-  } else if (identical(s, x)) {
-    var_transicion <- paste0('x_L', rez_s)
-  } else {
-    stop('La variable de transición no coincide con y ni con x')
-  }
+  var_transicion <- paste0(c("phi_", "theta_"), rez_s, ".y_L", rez_s)
   
   #Proteger variables que no se pueden eliminar
-  var_importantes <- c('intercepto', 'gamma', 'c', var_transicion)
+  var_importantes <- c('phi_0.intercepto', 'theta_0.intercepto', 'gamma', 'c', var_transicion)
   
-  #Crear vector donde se guardarán las variables a eliminar
-  eliminadas <- character(0)
-  iter <- 1
-  max_iter <- 20
   
-  repeat {
+  #Eliminar parámetros no significativos iterativamente
+  repetir <- TRUE
+  while (repetir) {
+    resumen <- str_original$resumen
+    var_nosignif <- subset(
+      resumen,
+      !(var_param %in% var_importantes) &
+        p_value > 0.1
+    )
     
-    #Identificación de variables no signifcativas (p-value > 0.1)
-    var_nosignif <- resumen$var_param[
-      resumen$p_value > 0.1 & 
-        !resumen$var_param %in% var_importantes &
-        resumen$tipo %in% c('lineal', 'no lineal')
-    ]
-    
-    #Condición de salida
-    if (length(var_nosignif) == 0 || iter > max_iter) {
-      cat("Finalizando iteración. Variables eliminadas:", paste(eliminadas, collapse = ", "), "\n")
-      resultado <- modelo_simplificado  
-      break
-    }
-    
-    #Identificar la variable con el mayor p-value
-    var_eliminar <- var_nosignif[which.max(resumen$p_value[resumen$var_param %in% var_nosignif])]
-    p_val <- round(resumen$p_value[resumen$var_param == var_eliminar], 6)
-    cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
-    
-    
-    eliminadas <- c(eliminadas, var_eliminar)
-    
-    #Ajustar rezagos según el tipo de variable eliminada
-    
-    if (startsWith(var_eliminar, 'x_L')) {
-      rez_num <- as.numeric(sub('x_L', '', var_eliminar))
-      rez_x.actual <- rez_x.actual[rez_x.actual != rez_num]
-    } else if (startsWith(var_eliminar, 'y_L')) {
-      rez_num <- as.numeric(sub('y_L', '', var_eliminar))
-      rez_y.actual <- rez_y.actual[rez_y.actual != rez_num]
-    } else {
-      warning(paste('Variable no identificada para eliminación:', var_eliminar))
+    if (nrow(var_nosignif) == 0) {
       repetir <- FALSE
-    }
-    
-    
-    #Protección antes de estimar de nuevo el modelo 
-    if (length(rez_y.actual) == 0 && length(rez_x.actual) == 0) {
-      cat("Sin variables explicativas. Se detiene.\n")
       break
     }
     
-    #Volver a estimar el modelo con los nuevos rezagos
-    modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y.actual, rez_x.actual, G)
+    fila_max <- which.max(var_nosignif$p_value)
+    param_max <- var_nosignif$var_param[fila_max]
     
-    #Actualizar resultados
-    tabla_global <- modelo_simplificado$resumen
-    resumen   <- modelo_simplificado$resumen
-    resultado <- modelo_simplificado
+    if (grepl("^phi_\\d+\\.y_L", param_max)) {
+      rez <- as.numeric(sub("^phi_\\d+\\.y_L", "", param_max))
+      rez_y_lineal <- setdiff(rez_y_lineal, rez)
+    } else if (grepl("^theta_\\d+\\.y_L", param_max)) {
+      rez <- as.numeric(sub("^theta_\\d+\\.y_L", "", param_max))
+      rez_y_nolineal <- setdiff(rez_y_nolineal, rez)
+    } else if (grepl("^phi_\\d+\\.x_L", param_max)) {
+      rez <- as.numeric(sub("^phi_\\d+\\.x_L", "", param_max))
+      rez_x_lineal <- setdiff(rez_x_lineal, rez)
+    } else if (grepl("^theta_\\d+\\.x_L", param_max)) {
+      rez <- as.numeric(sub("^theta_\\d+\\.x_L", "", param_max))
+      rez_x_nolineal <- setdiff(rez_x_nolineal, rez)
+    } else {
+      warning("No se reconoce el tipo de parámetro a eliminar.")
+      break
+    }
     
-    iter <- iter + 1
-    
+    #Reestimar modelo con los rezagos ajustados
+    str_original <- str_mod(
+      y = y,
+      x = x,
+      s = s,
+      rez_s = rez_s,
+      rez_y = union(rez_y_lineal, rez_y_nolineal),
+      rez_x = union(rez_x_lineal, rez_x_nolineal),
+      G = G
+    )
   }
   
-
-  return(list(
-    resumen = resultado$resumen,
-    parámetros = resultado$parámetros, 
-    logLik = -resultado$logLik, var_elimin=eliminadas))
-}  
+  return(str_original)
+}
 
 
 #6. Estimación de un modelo STR para ENSO-------------------
