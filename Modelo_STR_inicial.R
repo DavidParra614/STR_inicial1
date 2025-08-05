@@ -457,9 +457,12 @@ str_simplificado <- function(str_original) {
   rez_y.actual <- str_original$inputs$rez_y
   rez_x.actual <- str_original$inputs$rez_x
   G            <- str_original$inputs$G
+  resumen      <- str_original$resumen
+  
+  #Iniciar el modelo original si no se elimina nada
+  resultado <- str_original
   
   #Proteger la variable de transición 
-  
   if (identical(s, y)) {
     var_transicion <- paste0('y_L', rez_s)
   } else if (identical(s, x)) {
@@ -468,62 +471,75 @@ str_simplificado <- function(str_original) {
     stop('La variable de transición no coincide con y ni con x')
   }
   
-  #Crear vector donde se guardarán las variables a eliminar y empezar ciclo
+  #Proteger variables que no se pueden eliminar
+  var_importantes <- c('intercepto', 'gamma', 'c', var_transicion)
   
-  eliminadas <- c()
-  repetir    <- TRUE
-  resultadi  <- NULL 
+  #Crear vector donde se guardarán las variables a eliminar
+  eliminadas <- character(0)
+  iter <- 1
+  max_iter <- 20
   
-  while (repetir) {
-    resultado <- str_mod(y, x, s, rez_s, rez_y.actual, rez_x.actual, G)
-    resumen   <- resultado$resumen
+  repeat {
     
-    
-    #Variables candidatas a eliminación excluyendo la variable de transición, gamma y c
-    cand_elim <- resumen[
-      resumen$tipo %in% c("lineal", "no lineal") &
-        !(resumen$var_param %in% c("intercepto", "gamma", "c", var_transicion)),
+    #Identificación de variables no signifcativas (p-value > 0.1)
+    var_nosignif <- resumen$var_param[
+      resumen$p_value > 0.1 & 
+        !resumen$var_param %in% var_importantes &
+        resumen$tipo %in% c('lineal', 'no lineal')
     ]
     
-    #Verificar si hay variables no significativas para eliminar
-    if (nrow(cand_elim) == 0) {
-      repetir <- FALSE
+    #Condición de salida
+    if (length(var_nosignif) == 0 || iter > max_iter) {
+      cat("Finalizando iteración. Variables eliminadas:", paste(eliminadas, collapse = ", "), "\n")
+      resultado <- modelo_simplificado  
       break
     }
     
-    var_nosignif <- cand_elim[cand_elim$p_value > 0.1, ]
+    #Identificar la variable con el mayor p-value
+    var_eliminar <- var_nosignif[which.max(resumen$p_value[resumen$var_param %in% var_nosignif])]
+    p_val <- round(resumen$p_value[resumen$var_param == var_eliminar], 6)
+    cat(sprintf("Iteración %d: Eliminando %s (p-value = %s)\n", iter, var_eliminar, p_val))
     
-    if (nrow(var_nosignif)==0) {
+    
+    eliminadas <- c(eliminadas, var_eliminar)
+    
+    #Ajustar rezagos según el tipo de variable eliminada
+    
+    if (startsWith(var_eliminar, 'x_L')) {
+      rez_num <- as.numeric(sub('x_L', '', var_eliminar))
+      rez_x.actual <- rez_x.actual[rez_x.actual != rez_num]
+    } else if (startsWith(var_eliminar, 'y_L')) {
+      rez_num <- as.numeric(sub('y_L', '', var_eliminar))
+      rez_y.actual <- rez_y.actual[rez_y.actual != rez_num]
+    } else {
+      warning(paste('Variable no identificada para eliminación:', var_eliminar))
       repetir <- FALSE
-      break 
     }
     
-      #Obtener la variable con el mayor p-value
-      peor_variable <- var_nosignif$var_param[which.max(var_nosignif$p_value)]
-      eliminadas <- c(eliminadas, peor_variable)
+    
+    #Protección antes de estimar de nuevo el modelo 
+    if (length(rez_y.actual) == 0 && length(rez_x.actual) == 0) {
+      cat("Sin variables explicativas. Se detiene.\n")
+      break
+    }
+    
+    #Volver a estimar el modelo con los nuevos rezagos
+    modelo_simplificado <- str_mod(y, x, s, rez_s, rez_y.actual, rez_x.actual, G)
+    
+    #Actualizar resultados
+    tabla_global <- modelo_simplificado$resumen
+    resumen   <- modelo_simplificado$resumen
+    resultado <- modelo_simplificado
+    
+    iter <- iter + 1
+    
+  }
   
-      if (startsWith(peor_variable, 'x_L')) {
-        rez_num <- as.numeric(sub('x_L', '', peor_variable))
-        rez_x.actual <- rez_x.actual[rez_x.actual != rez_num]
-      } else if (startsWith(peor_variable, 'y_L')) {
-        rez_num <- as.numeric(sub('y_L', '', peor_variable))
-        rez_y.actual <- rez_y.actual[rez_y.actual != rez_num]
-      } else {
-        warning(paste('Variable no identificada para eliminación:', peor_variable))
-        repetir <- FALSE
-      }
-      
-      if (length(rez_y.actual) == 0 && length(rez_x.actual) == 0) {
-        repetir <- FALSE
-      }
-}
 
   return(list(
-    modelo_final = resultado,
-    rez_y_final = rez_y.actual,
-    rez_x_final = rez_x.actual,
-    variables_eliminadas = eliminadas
-  ))
+    resumen = resultado$resumen,
+    parámetros = resultado$parámetros, 
+    logLik = -resultado$logLik, var_elimin=eliminadas))
 }  
 
 
