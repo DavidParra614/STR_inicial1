@@ -275,6 +275,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #rez_y = rezagos de la variable endógena 'y' que actúan como variables explicativas
   #rez_x = rezagos de la variable exógena 'x' que actúan como variables explicativas
   #G = Función de transición, 'LSTR' si es logística o 'ESTR' si es exponencial
+  #fijar_0 = Es un vector de parámetros forzados a que sean 0, luego será útil para eliminar variables no significativas
   
   #Matriz de variables explicativas hasta el rezago máximo
   if (is.null(x)) {
@@ -344,8 +345,13 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
       stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
     }
   }
+  
+  #Nombres de los parámetros a estimar
+  param_nombres <- c(paste0('phi_', 0:(k - 1)), paste0('theta_', 0:(k - 1)), 'gamma', 'c') 
+  
+  
   #Costrucción del logaritmo de verosimilitud
-  Logverosimil_funcion <- function(parametros) {
+  Logverosimil_funcion    <- function(parametros) {
     k                     <- ncol(X)                             #número de variables explicativas
     Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
     names(Phi_lineal)     <- paste0('phi_', 0:(k-1))             #nombres de los parámetros lineales
@@ -558,7 +564,7 @@ ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
 ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
-ENSO_STR
+ENSO_STR$
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
 
