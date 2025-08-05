@@ -434,8 +434,98 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
            )
     )
   
-  return(list(resumen = tabla_global, parámetros = resultado$par, logLik = -resultado$value))
+  return(list(
+    resumen = tabla_global,
+    parámetros = resultado$par, 
+    logLik = -resultado$value, 
+    inputs = list(y = y, x = x, s = s, rez_s = rez_s, rez_y = rez_y, rez_x = rez_x, G = G)
+    )
+    )
 }
+
+#5.1 Creación de una función para eliminar variables no signficativas iterativamente---------------
+
+str_simplificado <- function(str_original) {
+  
+  #str_original: Es la estimación de un modelo STR sin elininar variables no significativas 
+  
+  #Llamar el modelo STR estimado con antelación
+  y            <- str_original$inputs$y
+  x            <- str_original$inputs$x
+  s            <- str_original$inputs$s
+  rez_s        <- str_original$inputs$rez_s
+  rez_y.actual <- str_original$inputs$rez_y
+  rez_x.actual <- str_original$inputs$rez_x
+  G            <- str_original$inputs$G
+  
+  #Proteger la variable de transición 
+  
+  if (identical(s, y)) {
+    var_transicion <- paste0('y_L', rez_s)
+  } else if (identical(s, x)) {
+    var_transicion <- paste0('x_L', rez_s)
+  } else {
+    stop('La variable de transición no coincide con y ni con x')
+  }
+  
+  #Crear vector donde se guardarán las variables a eliminar y empezar ciclo
+  
+  eliminadas <- c()
+  repetir    <- TRUE
+  resultadi  <- NULL 
+  
+  while (repetir) {
+    resultado <- str_mod(y, x, s, rez_s, rez_y.actual, rez_x.actual, G)
+    resumen   <- resultado$resumen
+    
+    
+    #Variables candidatas a eliminación excluyendo la variable de transición, gamma y c
+    cand_elim <- resumen[
+      resumen$tipo %in% c("lineal", "no lineal") &
+        !(resumen$var_param %in% c("intercepto", "gamma", "c", var_transicion)),
+    ]
+    
+    #Verificar si hay variables no significativas para eliminar
+    if (nrow(cand_elim) == 0) {
+      repetir <- FALSE
+      break
+    }
+    
+    var_nosignif <- cand_elim[cand_elim$p_value > 0.1, ]
+    
+    if (nrow(var_nosignif)==0) {
+      repetir <- FALSE
+      break 
+    }
+    
+      #Obtener la variable con el mayor p-value
+      peor_variable <- var_nosignif$var_param[which.max(var_nosignif$p_value)]
+      eliminadas <- c(eliminadas, peor_variable)
+  
+      if (startsWith(peor_variable, 'x_L')) {
+        rez_num <- as.numeric(sub('x_L', '', peor_variable))
+        rez_x.actual <- rez_x.actual[rez_x.actual != rez_num]
+      } else if (startsWith(peor_variable, 'y_L')) {
+        rez_num <- as.numeric(sub('y_L', '', peor_variable))
+        rez_y.actual <- rez_y.actual[rez_y.actual != rez_num]
+      } else {
+        warning(paste('Variable no identificada para eliminación:', peor_variable))
+        repetir <- FALSE
+      }
+      
+      if (length(rez_y.actual) == 0 && length(rez_x.actual) == 0) {
+        repetir <- FALSE
+      }
+}
+
+  return(list(
+    modelo_final = resultado,
+    rez_y_final = rez_y.actual,
+    rez_x_final = rez_x.actual,
+    variables_eliminadas = eliminadas
+  ))
+}  
+
 
 #6. Estimación de un modelo STR para ENSO-------------------
 
@@ -454,6 +544,9 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 
 ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
 ENSO_STR
+
+ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
+
 cat('Modelo STR para la serie ENSO, teniendo 3 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
 #7. Estimación de un modelo STR para DINF---------------------------------------
@@ -517,6 +610,7 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=11, rez_y=3, rez_x=12, G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
+
 
 
 
