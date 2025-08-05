@@ -323,9 +323,9 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     }
   
   #Variables explicativas
-  X <- cbind(intercepto=1, base_explicativas[, explicativas])
-  W <- cbind(intercepto=1, base_explicativas[, explicativas])
-  k <- ncol(X) #número de variables explicativas
+  X <- cbind(intercepto=1, base_explicativas[, explicativas]) 
+  
+  k <- ncol(X) #número de variables explicativas parte lineal
   
   #Variable de transición ajustada 
   base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
@@ -355,7 +355,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     c                     <- parametros[(2*k)+2]                 #Umbral de transición
 
     f_trans               <- func_trans(z, gamma, c)                            #Función de transición
-    y_estim               <- X %*% Phi_lineal + W %*% theta_nolineal*f_trans    #Variable endógena estimada
+    y_estim               <- X %*% Phi_lineal + X %*% theta_nolineal*f_trans    #Variable endógena estimada
     residuos              <- y_dep - y_estim                                    #Residuos del modelo
     sigma2                <- mean(residuos^2)                                   #Sigma^2 en el logaritmo de verosimilitud
     Logverosimil          <- -0.5 * length(y_dep) * (log(2 * pi * sigma2) + 1)  #Logaritmo de verosimilitud
@@ -363,10 +363,10 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   }
   
   #Valores iniciales de los parámetros
-  param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s))
+  param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s))                      
   
   #Optimización del logaritmo de verosimilitud
-  resultado <- optim(par     = param_inicio,
+  resultado <- optim(par     = param_inicio, 
                      fn      = Logverosimil_funcion,
                      method  = "BFGS",
                      hessian =TRUE,
@@ -378,10 +378,10 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
   names(param_lineal)   <- paste0('phi_', 0:(k-1))
-  param_nolineal        <- resultado$par[(k+1):(2*k)]
+  param_nolineal        <- resultado$par[1:k]
   names(param_nolineal) <- paste0('theta_', 0:(k-1))
-  gamma                 <- resultado$par[(2*k)+1]
-  c                     <- resultado$par[(2*k)+2]
+  gamma                 <- resultado$par[k+1]
+  c                     <- resultado$par[k+2]
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
@@ -437,8 +437,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   return(list(
     resumen = tabla_global,
     parámetros = resultado$par, 
-    logLik = -resultado$value, 
-    inputs = list(y = y, x = x, s = s, rez_s = rez_s, rez_y = rez_y, rez_x = rez_x, G = G)
+    logLik = -resultado$value
     )
     )
 }
