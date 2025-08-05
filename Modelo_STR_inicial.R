@@ -391,14 +391,14 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    var_param       = colnames(X), 
+    var_param       = paste0("phi_", 0:(k - 1), ".", colnames(X)), 
     param_estim     = round(param_lineal, 6),
     tipo            = 'lineal'
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    var_param   = colnames(X), 
+    var_param   = paste0("theta_", 0:(k - 1), ".", colnames(X)), 
     param_estim = round(param_nolineal, 6),
     tipo        = 'no lineal'
   )
