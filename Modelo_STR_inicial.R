@@ -564,7 +564,7 @@ ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
 ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
-ENSO_STR$
+ENSO_STR
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
 
