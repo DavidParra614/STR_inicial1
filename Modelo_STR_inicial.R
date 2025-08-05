@@ -363,7 +363,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   }
   
   #Valores iniciales de los parámetros
-  param_inicio <- c(rep(0, 2*k), gamma=1, c=mean(s))                      
+  param_inicio <- c(rep(0, 2*k), 'gamma'=1, 'c'=mean(s))                      
   
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par     = param_inicio, 
@@ -378,10 +378,10 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
   names(param_lineal)   <- paste0('phi_', 0:(k-1))
-  param_nolineal        <- resultado$par[1:k]
+  param_nolineal        <- resultado$par[(k+1):(2*k)]
   names(param_nolineal) <- paste0('theta_', 0:(k-1))
-  gamma                 <- resultado$par[k+1]
-  c                     <- resultado$par[k+2]
+  gamma                 <- resultado$par[(2*k)+1]
+  c                     <- resultado$par[(2*k)+2]
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
