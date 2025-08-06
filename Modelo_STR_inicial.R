@@ -446,7 +446,15 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   return(list(
     resumen    = tabla_global,
     parámetros = resultado$par, 
-    logLik     = -resultado$value
+    logLik     = -resultado$value,
+    y          = y,
+    x          = x,
+    s          = s,
+    rez_s      = rez_s, 
+    rez_x.lin  = rez_x.lin,
+    rez_y.lin  = rez_y.lin,
+    rez_x.nl   = rez_x.nl,
+    rez_y.nl   = rez_x.nl
     )
     )
 }
@@ -458,37 +466,30 @@ str_simplificado <- function(str_original) {
   #str_original: Es la estimación de un modelo STR sin eliminar variables no significativas 
   
   #Llamar los argumentos del modelo orginal
-  y       <- str_original$y
-  x       <- str_original$x
-  s       <- str_original$s
-  rez_s   <- str_original$rez_s
-  rez_y   <- str_original$rez_y
-  rez_x   <- str_original$rez_x
-  G       <- str_original$G
-  resumen <- str_original$resumen
+  y           <- str_original$y
+  x           <- str_original$x
+  s           <- str_original$s
+  rez_s       <- str_original$rez_s
+  rez_y.lin   <- str_original$rez_y
+  rez_x.lin   <- str_original$rez_x
+  rez_y.nl    <- str_original$rez_y
+  rez_x.nl    <- str_original$rez_x
+  resumen     <- str_original$resumen
   
-  #Extraer rezagos activos de las variables a partir del nombre de los parámetros
-  for (fila in resumen$var_param) {
-    if (grepl("^phi_\\d+\\.y_L", fila)) {
-      rez <- as.numeric(sub("^phi_\\d+\\.y_L", "", fila))
-      rez_y <- union(rez_y_lineal, rez)
-    } else if (grepl("^theta_\\d+\\.y_L", fila)) {
-      rez <- as.numeric(sub("^theta_\\d+\\.y_L", "", fila))
-      rez_y_nolineal <- union(rez_y_nolineal, rez)
-    } else if (grepl("^phi_\\d+\\.x_L", fila)) {
-      rez <- as.numeric(sub("^phi_\\d+\\.x_L", "", fila))
-      rez_x_lineal <- union(rez_x_lineal, rez)
-    } else if (grepl("^theta_\\d+\\.x_L", fila)) {
-      rez <- as.numeric(sub("^theta_\\d+\\.x_L", "", fila))
-      rez_x_nolineal <- union(rez_x_nolineal, rez)
-    }
+  #Identificar la variable de transición 
+  if (identical(s, y)) {
+    nombre_transicion <- paste0("y_L", rez_s)
+  } else if (!is.null(x) && identical(s, x)) {
+    nombre_transicion <- paste0("x_L", rez_s)
+  } else {
+    stop("La variable de transición no coincide con 'y' ni con 'x'")
   }
   
   #Proteger la variable de transición 
-  var_transicion <- paste0(c("phi_", "theta_"), rez_s, ".y_L", rez_s)
+  var_transicion <- paste0(c("lineal_", "nolineal_"), rez_s, nombre_transicion, rez_s)
   
   #Proteger variables que no se pueden eliminar
-  var_importantes <- c('phi_0.intercepto', 'theta_0.intercepto', 'gamma', 'c', var_transicion)
+  var_importantes <- c('lineal_0.intercepto', 'nolineal_0.intercepto', 'gamma', 'c', var_transicion)
   
   
   #Eliminar parámetros no significativos iterativamente
