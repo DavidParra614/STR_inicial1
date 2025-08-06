@@ -267,20 +267,20 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
 }
 
 #5. Función para estimar un modelo STR por máxima verosimilitud-----------------
-str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
+str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
   #y = Variable endógena explicada
   #x = Variable exógena explicativa
   #s = Variable de la cual se usará algunos de sus rezagos para ser variable de transición
   #rez_s = Rezago de la variable s que se usará como variable de transición
-  #rez_y = rezagos de la variable endógena 'y' que actúan como variables explicativas
-  #rez_x = rezagos de la variable exógena 'x' que actúan como variables explicativas
+  #rez_y = vector de rezagos de la variable endógena 'y', los cuales actúan como variables explicativas
+  #rez_x = vector rezagos de la variable exógena 'x', los cuales actúan como variables explicativas
   #G = Función de transición, 'LSTR' si es logística o 'ESTR' si es exponencial
   #fijar_0 = Es un vector de parámetros forzados a que sean 0, luego será útil para eliminar variables no significativas
   
   #Matriz de variables explicativas hasta el rezago máximo
   if (is.null(x)) {
     rez_x=NULL
-    rez_max <- rez_y
+    rez_max <- max(rez_y)
     if (rez_s > rez_max) {
       warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
       rez_s <- rez_max
@@ -294,7 +294,7 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     y_dep <- base_explicativas[, 'y_L']
     
     #Variables explicativas deseadas según sus rezagos
-    explicativas <- paste0("y_L", 1:rez_y)
+    explicativas <- paste0("y_L", 1:max(rez_y))
   
     } else {
 
@@ -317,8 +317,8 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     
     #Variables explicativas deseadas según sus rezagos
     explicativas <- c(
-    paste0("y_L", 1:rez_y),
-    paste0("x_L", 1:rez_x)
+    paste0("y_L", 1:max(rez_y)),
+    paste0("x_L", 1:max(rez_x))
     )
     
     }
@@ -345,9 +345,6 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
       stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
     }
   }
-  
-  #Nombres de los parámetros a estimar
-  param_nombres <- c(paste0('phi_', 0:(k - 1)), paste0('theta_', 0:(k - 1)), 'gamma', 'c') 
   
   
   #Costrucción del logaritmo de verosimilitud
@@ -441,9 +438,16 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
     )
   
   return(list(
-    resumen = tabla_global,
+    resumen    = tabla_global,
     parámetros = resultado$par, 
-    logLik = -resultado$value
+    logLik     = -resultado$value,
+    y          = y,
+    x          = x,
+    s          = s,
+    rez_y      = rez_y,
+    rez_x      = rez_x,
+    rez_s      = rez_s,
+    G          = G
     )
     )
 }
@@ -452,11 +456,16 @@ str_mod <- function(y, x, s, rez_s, rez_y, rez_x, G) {
 
 str_simplificado <- function(str_original) {
   
-  #str_original: Es la estimación de un modelo STR sin elininar variables no significativas 
+  #str_original: Es la estimación de un modelo STR sin eliminar variables no significativas 
   
-  #Llamar resumen desde el modelo original
-  resumen    <- str_original$resumen
-  parametros <- str_original$parametros 
+  #Llamar los argumentos del modelo orginal
+  y     <- str_original$y
+  x     <- str_original$x
+  s     <- str_original$s
+  rez_s <- str_original$rez_s
+  rez_y <- str_original$rez_y
+  rez_x <- str_original$rez_x
+  G     <- str_original$G
   
   #Iniciar rezagos actuales de 'y' y 'x, puesto que se irán actualizando
   rez_y_lineal   <- c()
@@ -561,7 +570,7 @@ ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
-ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=5, rez_x=NULL, G="LSTR")
+ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=1:5, rez_x=NULL, G="LSTR")
 ENSO_STR
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
@@ -629,8 +638,6 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=11, rez_y=3, rez_x=12, G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
-
-
 
 
 
