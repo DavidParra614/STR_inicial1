@@ -267,20 +267,22 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
 }
 
 #5. Función para estimar un modelo STR por máxima verosimilitud-----------------
-str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
+str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), rez_x.nl=c(), G) {
   #y = Variable endógena explicada
   #x = Variable exógena explicativa
   #s = Variable de la cual se usará algunos de sus rezagos para ser variable de transición
   #rez_s = Rezago de la variable s que se usará como variable de transición
-  #rez_y = vector de rezagos de la variable endógena 'y', los cuales actúan como variables explicativas
-  #rez_x = vector rezagos de la variable exógena 'x', los cuales actúan como variables explicativas
+  #rez_y.lin = vector de rezagos de la variable endógena 'y' en la parte lineal
+  #rez_x.lin = vector rezagos de la variable exógena 'x' en la parte lineal
+  #rez_y.nl = vector de rezagos de la variable endógena 'y' en la parte no lineal
+  #rez_x.nl = vector rezagos de la variable exógena 'x' en la parte no lineal
   #G = Función de transición, 'LSTR' si es logística o 'ESTR' si es exponencial
-  #fijar_0 = Es un vector de parámetros forzados a que sean 0, luego será útil para eliminar variables no significativas
   
-  #Matriz de variables explicativas hasta el rezago máximo
+  #Matriz de variables explicativas de la parte lineal hasta el rezago máximo
   if (is.null(x)) {
-    rez_x=NULL
-    rez_max <- max(rez_y)
+    rez_x.lin = NULL
+    rez_x.nl  = NULL
+    rez_max   <- max(rez_y.lin, rez_y.nl)
     if (rez_s > rez_max) {
       warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
       rez_s <- rez_max
@@ -293,20 +295,22 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
     #Variable explicada
     y_dep <- base_explicativas[, 'y_L']
     
-    #Variables explicativas deseadas según sus rezagos
-    explicativas <- paste0("y_L", 1:max(rez_y))
+    #Variables explicativas deseadas según sus rezagos 
+    explicativas.lin <- paste0("y_L", rez_y.lin) #Parte Lineal
+    explicativas.nl  <- paste0("y_L", rez_y.nl)  #Parte no lineal
   
     } else {
 
-    !is.null(rez_x) 
-    rez_max <- max(rez_x,rez_y)
+    !is.null(rez_x.lin)
+    !is.null(rez_x.nl) 
+    rez_max <- max(rez_x.lin,rez_y.lin, rez_x.nl, rez_y.nl)
     if (rez_s > rez_max) {
       warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
       rez_s <- rez_max
     }
     
     #Matriz de variables explicativas
-    base_explicativas <- embed(cbind(y,x), rez_max+1)
+    base_explicativas           <- embed(cbind(y,x), rez_max+1)
     colnames(base_explicativas) <-c(
     paste0('y_L', c('', 1:rez_max)),
     paste0('x_L', c('', 1:rez_max))
@@ -316,17 +320,22 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
     y_dep <- base_explicativas[, 'y_L']
     
     #Variables explicativas deseadas según sus rezagos
-    explicativas <- c(
-    paste0("y_L", 1:max(rez_y)),
-    paste0("x_L", 1:max(rez_x))
+    explicativas.lin <- c(
+    paste0("y_L", rez_y.lin),
+    paste0("x_L", rez_x.lin)
+    )
+    explicativas.nl <- c(
+      paste0("y_L", rez_y.nl),
+      paste0("x_L", rez_x.nl)
     )
     
     }
   
   #Variables explicativas
-  X <- cbind(intercepto=1, base_explicativas[, explicativas]) #Variables explicativas para la parte lineal
-  W <- cbind(intercepto=1, base_explicativas[, explicativas]) #Variables explicativas de la parte no lineal
-  k <- ncol(X) #número de variables explicativas de cada parte
+  X <- cbind(intercepto=1, base_explicativas[, explicativas.lin]) #Variables explicativas para la parte lineal
+  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl]) #Variables explicativas de la parte no lineal
+  k <- ncol(X) #número de variables explicativas de la parte lineal
+  j <- ncol(W) #número de variables explicativas de la parte no lineal
   
   #Variable de transición ajustada 
   base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
@@ -352,10 +361,10 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
     k                     <- ncol(X)                             #número de variables explicativas
     Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
     names(Phi_lineal)     <- paste0('phi_', 0:(k-1))             #nombres de los parámetros lineales
-    theta_nolineal        <- parametros[(k+1):(2*k)]             #parámetros de la parte no lineal
-    names(theta_nolineal) <- paste0('theta_', 0:(k-1))           #nombres de los parámetros no lineales
-    gamma                 <- parametros[(2*k)+1]                 #Parámetro de velocidad de transición
-    c                     <- parametros[(2*k)+2]                 #Umbral de transición
+    theta_nolineal        <- parametros[(k+1):(k+j)]             #parámetros de la parte no lineal
+    names(theta_nolineal) <- paste0('theta_', 0:(j-1))           #nombres de los parámetros no lineales
+    gamma                 <- parametros[(k+j)+1]                 #Parámetro de velocidad de transición
+    c                     <- parametros[(k+j)+2]                 #Umbral de transición
 
     f_trans               <- func_trans(z, gamma, c)                            #Función de transición
     y_estim               <- X %*% Phi_lineal + W %*% theta_nolineal*f_trans    #Variable endógena estimada
@@ -366,7 +375,7 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
   }
   
   #Valores iniciales de los parámetros
-  param_inicio <- c(rep(0, 2*k), 'gamma'=1, 'c'=mean(s))                      
+  param_inicio <- c(rep(0, (k+j)), 'gamma'=1, 'c'=mean(s))                      
   
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par     = param_inicio, 
@@ -381,30 +390,27 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
   #Obtención de parámetros estimados con sus respectivos nombres
   param_lineal          <- resultado$par[1:k]
   names(param_lineal)   <- paste0('phi_', 0:(k-1))
-  param_nolineal        <- resultado$par[(k+1):(2*k)]
-  names(param_nolineal) <- paste0('theta_', 0:(k-1))
-  gamma                 <- resultado$par[(2*k)+1]
-  c                     <- resultado$par[(2*k)+2]
+  param_nolineal        <- resultado$par[(k+1):(k+j)]
+  names(param_nolineal) <- paste0('theta_', 0:(j-1))
+  gamma                 <- resultado$par[(k+j)+1]
+  c                     <- resultado$par[(k+j)+2]
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    var_param       = paste0("phi_", 0:(k - 1), ".", colnames(X)), 
-    param_estim     = round(param_lineal, 6),
-    tipo            = 'lineal'
+    var_param       = paste0("lineal_", 0:(k - 1), ".", colnames(X)), 
+    param_estim     = round(param_lineal, 6)
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    var_param   = paste0("theta_", 0:(k - 1), ".", colnames(X)), 
-    param_estim = round(param_nolineal, 6),
-    tipo        = 'no lineal'
+    var_param   = paste0("nolineal_", 0:(j - 1), ".", colnames(W)), 
+    param_estim = round(param_nolineal, 6)
   )
   
   #Tabla resumen de los demás parámetros
   tabla_otros <- data.frame(
    var_param   = c('gamma', 'c'),
-   param_estim = round(c(gamma, c), 6),
-   tipo        = c('velocidad de transición', 'umbral de transición')
+   param_estim = round(c(gamma, c), 6)
   )
   
   #Pruebas de signficancia 
@@ -440,14 +446,7 @@ str_mod <- function(y, x, s, rez_s, rez_y=c(), rez_x=c(), G) {
   return(list(
     resumen    = tabla_global,
     parámetros = resultado$par, 
-    logLik     = -resultado$value,
-    y          = y,
-    x          = x,
-    s          = s,
-    rez_y      = rez_y,
-    rez_x      = rez_x,
-    rez_s      = rez_s,
-    G          = G
+    logLik     = -resultado$value
     )
     )
 }
@@ -459,25 +458,20 @@ str_simplificado <- function(str_original) {
   #str_original: Es la estimación de un modelo STR sin eliminar variables no significativas 
   
   #Llamar los argumentos del modelo orginal
-  y     <- str_original$y
-  x     <- str_original$x
-  s     <- str_original$s
-  rez_s <- str_original$rez_s
-  rez_y <- str_original$rez_y
-  rez_x <- str_original$rez_x
-  G     <- str_original$G
-  
-  #Iniciar rezagos actuales de 'y' y 'x, puesto que se irán actualizando
-  rez_y_lineal   <- c()
-  rez_y_nolineal <- c()
-  rez_x_lineal   <- c()
-  rez_x_nolineal <- c()
+  y       <- str_original$y
+  x       <- str_original$x
+  s       <- str_original$s
+  rez_s   <- str_original$rez_s
+  rez_y   <- str_original$rez_y
+  rez_x   <- str_original$rez_x
+  G       <- str_original$G
+  resumen <- str_original$resumen
   
   #Extraer rezagos activos de las variables a partir del nombre de los parámetros
   for (fila in resumen$var_param) {
     if (grepl("^phi_\\d+\\.y_L", fila)) {
       rez <- as.numeric(sub("^phi_\\d+\\.y_L", "", fila))
-      rez_y_lineal <- union(rez_y_lineal, rez)
+      rez_y <- union(rez_y_lineal, rez)
     } else if (grepl("^theta_\\d+\\.y_L", fila)) {
       rez <- as.numeric(sub("^theta_\\d+\\.y_L", "", fila))
       rez_y_nolineal <- union(rez_y_nolineal, rez)
@@ -489,13 +483,6 @@ str_simplificado <- function(str_original) {
       rez_x_nolineal <- union(rez_x_nolineal, rez)
     }
   }
-  
-  #Llamar argumentos necesarios del modelo original
-  y     <- str_original$y
-  x     <- str_original$x
-  s     <- str_original$s
-  rez_s <- str_original$rez_s
-  G     <- str_original$G
   
   #Proteger la variable de transición 
   var_transicion <- paste0(c("phi_", "theta_"), rez_s, ".y_L", rez_s)
@@ -570,7 +557,7 @@ ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
-ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y=1:5, rez_x=NULL, G="LSTR")
+ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y.lin=1:5, rez_y.nl=1:5,  G="LSTR")
 ENSO_STR
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
