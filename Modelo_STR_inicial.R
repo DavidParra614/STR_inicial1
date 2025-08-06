@@ -283,10 +283,6 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     rez_x.lin = NULL
     rez_x.nl  = NULL
     rez_max   <- max(rez_y.lin, rez_y.nl)
-    if (rez_s > rez_max) {
-      warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
-      rez_s <- rez_max
-    }
     
     #Matriz de variables explicativas
     base_explicativas           <- embed(y, rez_max+1)
@@ -304,10 +300,6 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     !is.null(rez_x.lin)
     !is.null(rez_x.nl) 
     rez_max <- max(rez_x.lin,rez_y.lin, rez_x.nl, rez_y.nl)
-    if (rez_s > rez_max) {
-      warning(sprintf("rez_s (%d) es mayor que rez_max (%d). Ajustando rez_s = rez_max.", rez_s, rez_max))
-      rez_s <- rez_max
-    }
     
     #Matriz de variables explicativas
     base_explicativas           <- embed(cbind(y,x), rez_max+1)
@@ -454,7 +446,7 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     rez_x.lin  = rez_x.lin,
     rez_y.lin  = rez_y.lin,
     rez_x.nl   = rez_x.nl,
-    rez_y.nl   = rez_x.nl
+    rez_y.nl   = rez_y.nl
     )
     )
 }
@@ -486,7 +478,7 @@ str_simplificado <- function(str_original) {
   }
   
   #Proteger la variable de transición 
-  var_transicion <- paste0(c("lineal_", "nolineal_"), rez_s, nombre_transicion, rez_s)
+  var_transicion <- paste0(c("lineal_", "nolineal_"), rez_s, ".", nombre_transicion)
   
   #Proteger variables que no se pueden eliminar
   var_importantes <- c('lineal_0.intercepto', 'nolineal_0.intercepto', 'gamma', 'c', var_transicion)
@@ -496,32 +488,34 @@ str_simplificado <- function(str_original) {
   repetir <- TRUE
   while (repetir) {
     resumen <- str_original$resumen
+    
+    #Identificar variables no significativas  
     var_nosignif <- subset(
-      resumen,
-      !(var_param %in% var_importantes) &
-        p_value > 0.1
-    )
+                    resumen,
+                    !(var_param %in% var_importantes) &
+                     p_value > 0.1
+                    )
     
     if (nrow(var_nosignif) == 0) {
       repetir <- FALSE
       break
     }
     
-    fila_max <- which.max(var_nosignif$p_value)
-    param_max <- var_nosignif$var_param[fila_max]
+    mayor.p_value <- which.max(var_nosignif$p_value)
+    peor_variable <- var_nosignif$var_param[mayor.p_value]
     
-    if (grepl("^phi_\\d+\\.y_L", param_max)) {
-      rez <- as.numeric(sub("^phi_\\d+\\.y_L", "", param_max))
-      rez_y_lineal <- setdiff(rez_y_lineal, rez)
-    } else if (grepl("^theta_\\d+\\.y_L", param_max)) {
-      rez <- as.numeric(sub("^theta_\\d+\\.y_L", "", param_max))
-      rez_y_nolineal <- setdiff(rez_y_nolineal, rez)
-    } else if (grepl("^phi_\\d+\\.x_L", param_max)) {
-      rez <- as.numeric(sub("^phi_\\d+\\.x_L", "", param_max))
-      rez_x_lineal <- setdiff(rez_x_lineal, rez)
-    } else if (grepl("^theta_\\d+\\.x_L", param_max)) {
-      rez <- as.numeric(sub("^theta_\\d+\\.x_L", "", param_max))
-      rez_x_nolineal <- setdiff(rez_x_nolineal, rez)
+    if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
+      rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
+      rez_y.lin <- setdiff(rez_y.lin, rez)
+    } else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
+      rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
+      rez_y.nl  <- setdiff(rez_y.nl, rez)
+    } else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
+      rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
+      rez_x.lin <- setdiff(rez_x.lin, rez)
+    } else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
+      rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
+      rez_x.nl  <- setdiff(rez_x.nl, rez)
     } else {
       warning("No se reconoce el tipo de parámetro a eliminar.")
       break
@@ -529,12 +523,14 @@ str_simplificado <- function(str_original) {
     
     #Reestimar modelo con los rezagos ajustados
     str_original <- str_mod(
-      y = y,
-      x = x,
-      s = s,
-      rez_s = rez_s,
-      rez_y = union(rez_y_lineal, rez_y_nolineal),
-      rez_x = union(rez_x_lineal, rez_x_nolineal),
+      y         = y,
+      x         = x,
+      s         = s,
+      rez_s     = rez_s,
+      rez_y.lin = rez_y.lin,
+      rez_x.lin = rez_x.lin,
+      rez_y.nl  = rez_y.nl,
+      rez_x.nl = rez_x.nl,
       G = G
     )
   }
@@ -558,7 +554,7 @@ ENSO_NLtest <- terasvirta_testNL(y=ENSO, x=NULL, rez_y=5, rez_x, alfa=0.05)
 ENSO_NLtest
 cat('Según el test de no linealidad de Terarsvirta (1995), la variable de transición es ENSO_t-3 y la función de transición es una función logística LSTR')
 
-ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y.lin=1:5, rez_y.nl=1:5,  G="LSTR")
+ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y.lin=1:5, rez_x.lin = NULL, rez_y.nl=1:5, rez_x.nl = NULL,  G="LSTR")
 ENSO_STR
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
