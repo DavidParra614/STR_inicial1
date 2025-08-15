@@ -387,15 +387,27 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   gamma                 <- resultado$par[(k+j)+1]
   c                     <- resultado$par[(k+j)+2]
   
+  #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
+  indice_por_col <- function(nombre) {
+    if (nombre == "intercepto") return(0L)
+    r <- regexec("^(?:y|x)_L(\\d+)$", nombre)
+    h <- regmatches(nombre, r)[[1]]
+    if (length(h) >= 2) return(as.integer(h[2]))
+    stop(sprintf("No pude extraer lag de la columna: '%s'", nombre))
+  }
+  
+  idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
+  idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
+  
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    var_param       = paste0("lineal_", 0:(k - 1), ".", colnames(X)), 
+    var_param       = paste0("lineal_", idx_lin, ".", colnames(X)), 
     param_estim     = round(param_lineal, 6)
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    var_param   = paste0("nolineal_", 0:(j - 1), ".", colnames(W)), 
+    var_param   = paste0("nolineal_", idx_nl, ".", colnames(W)), 
     param_estim = round(param_nolineal, 6)
   )
   
@@ -446,7 +458,8 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     rez_x.lin  = rez_x.lin,
     rez_y.lin  = rez_y.lin,
     rez_x.nl   = rez_x.nl,
-    rez_y.nl   = rez_y.nl
+    rez_y.nl   = rez_y.nl,
+    G          = G
     )
     )
 }
@@ -457,15 +470,19 @@ str_simplificado <- function(str_original) {
   
   #str_original: Es la estimación de un modelo STR sin eliminar variables no significativas 
   
+  #Función previa que ayuda a extraer correctamente los nombres del parámetro. Ej: lineal_2.x_L2 --> el número coincide
+  extrae_lado_derecho <- function(v) sub("^.*?\\.", "", v)
+  
   #Llamar los argumentos del modelo orginal
   y           <- str_original$y
   x           <- str_original$x
   s           <- str_original$s
   rez_s       <- str_original$rez_s
-  rez_y.lin   <- str_original$rez_y
-  rez_x.lin   <- str_original$rez_x
-  rez_y.nl    <- str_original$rez_y
-  rez_x.nl    <- str_original$rez_x
+  rez_y.lin   <- str_original$rez_y.lin
+  rez_x.lin   <- str_original$rez_x.lin
+  rez_y.nl    <- str_original$rez_y.nl
+  rez_x.nl    <- str_original$rez_x.nl
+  G           <- str_original$G
   resumen     <- str_original$resumen
   
   #Identificar la variable de transición 
@@ -477,23 +494,22 @@ str_simplificado <- function(str_original) {
     stop("La variable de transición no coincide con 'y' ni con 'x'")
   }
   
-  #Proteger la variable de transición 
-  var_transicion <- paste0(c("lineal_", "nolineal_"), rez_s, ".", nombre_transicion)
-  
-  #Proteger variables que no se pueden eliminar
-  var_importantes <- c('lineal_0.intercepto', 'nolineal_0.intercepto', 'gamma', 'c', var_transicion)
-  
   
   #Eliminar parámetros no significativos iterativamente
   repetir <- TRUE
   while (repetir) {
     resumen <- str_original$resumen
     
+    #Proteger las variables importantes: interceptos, variable de transición, gamma y c
+    lado_der        <- extrae_lado_derecho(resumen$var_param)
+    var_importantes <- (resumen$var_param %in% c("lineal_0.intercepto","nolineal_0.intercepto","gamma","c")) |
+        (lado_der == nombre_transicion)
+      
     #Identificar variables no significativas  
     var_nosignif <- subset(
                     resumen,
-                    !(var_param %in% var_importantes) &
-                     p_value > 0.1
+                    !var_importantes &
+                     (p_value > 0.1)
                     )
     
     if (nrow(var_nosignif) == 0) {
@@ -530,8 +546,8 @@ str_simplificado <- function(str_original) {
       rez_y.lin = rez_y.lin,
       rez_x.lin = rez_x.lin,
       rez_y.nl  = rez_y.nl,
-      rez_x.nl = rez_x.nl,
-      G = G
+      rez_x.nl  = rez_x.nl,
+      G         = G
     )
   }
   
@@ -619,9 +635,10 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 
 
 #7.3 Estimación del modelo STR--------------------------------------------------
-DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=11, rez_y=3, rez_x=12, G="ESTR")
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y.lin=1:12, rez_x.lin = 1:3, rez_y.nl=1:12, rez_x.nl = 1:3,  G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
 
+DINF_STR.simplificado <- str_simplificado(DINF_STR)
 
 
