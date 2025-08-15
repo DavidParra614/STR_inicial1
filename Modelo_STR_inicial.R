@@ -324,8 +324,8 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     }
   
   #Variables explicativas
-  X <- cbind(intercepto=1, base_explicativas[, explicativas.lin]) #Variables explicativas para la parte lineal
-  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl]) #Variables explicativas de la parte no lineal
+  X <- cbind(intercepto=1, base_explicativas[, explicativas.lin, drop=FALSE]) #Variables explicativas para la parte lineal
+  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl, drop=FALSE]) #Variables explicativas de la parte no lineal
   k <- ncol(X) #número de variables explicativas de la parte lineal
   j <- ncol(W) #número de variables explicativas de la parte no lineal
   
@@ -367,7 +367,7 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   }
   
   #Valores iniciales de los parámetros
-  param_inicio <- c(rep(0, (k+j)), 'gamma'=1, 'c'=mean(s))                      
+  param_inicio <- c(rep(0, (k+j)), 'gamma'=1, 'c'=mean(z, na.rm=TRUE))                      
   
   #Optimización del logaritmo de verosimilitud
   resultado <- optim(par     = param_inicio, 
@@ -388,12 +388,30 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   c                     <- resultado$par[(k+j)+2]
   
   #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
-  indice_por_col <- function(nombre) {
-    if (nombre == "intercepto") return(0L)
-    r <- regexec("^(?:y|x)_L(\\d+)$", nombre)
-    h <- regmatches(nombre, r)[[1]]
-    if (length(h) >= 2) return(as.integer(h[2]))
-    stop(sprintf("No pude extraer lag de la columna: '%s'", nombre))
+  indice_por_col <- function(nm) {
+    nm <- trimws(as.character(nm))
+    if (length(nm) == 0) return(integer(0))
+    
+    # Patrones válidos
+    es_intercepto <- nm == "intercepto"
+    es_yx_lag     <- grepl("^(?:y|x)_L[1-9][0-9]*$", nm)  # y_L1, x_L2, ... (>=1)
+    
+    # Si hay algo que no es ni intercepto ni y/x con lag >=1, error claro
+    inval <- !(es_intercepto | es_yx_lag)
+    if (any(inval)) {
+      stop(
+        "Regresores inválidos detectados (esperaba 'intercepto' o y_Lk/x_Lq con k,q>=1): ",
+        paste(nm[inval], collapse = ", ")
+      )
+    }
+    
+    # Construye índices: 0 para intercepto, número para y/x
+    out <- integer(length(nm))
+    out[es_intercepto] <- 0L
+    if (any(es_yx_lag)) {
+      out[es_yx_lag] <- as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm[es_yx_lag]))
+    }
+    out
   }
   
   idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
@@ -419,10 +437,38 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   
   #Pruebas de signficancia 
   coeficientes  <- resultado$par                  #coeficientes estimados
-  varcov_matriz <- solve(resultado$hessian)       #Matriz de varianzas y covarianzas de los estimadores
-  desv_est      <- sqrt(diag(varcov_matriz))      #Desviación estándar de los estimadores
-  z_est         <- coeficientes/desv_est          #Estadístico z según el test de Wald
-  p_values      <- 2 * (1 - pnorm(abs(z_est)))    #p-values arrojados
+  
+  #Garantizar que la matriz var-cov no admita Nas
+  H <- resultado$hessian
+  # simetriza por seguridad numérica
+  H <- 0.5 * (H + t(H))
+  
+  #Intento 1: invertir directamente
+  vcov_prueba <- tryCatch(solve(H), error = function(e) NULL)
+  
+  if (is.null(vcov_prueba) || any(!is.finite(diag(vcov_prueba))) || any(diag(vcov_prueba) < 0)) {
+  
+    #intento 2: regularizar a matriz definida positiva vía descomposición espectral
+    eg  <- eigen(H, symmetric = TRUE)
+    lam <- eg$values
+    tol <- 1e-8 * max(1, max(abs(lam), na.rm = TRUE))
+    lam[lam < tol] <- tol
+    H_reg <- eg$vectors %*% diag(lam) %*% t(eg$vectors)
+    varcov_matriz <- solve(H_reg)
+  } else {
+    varcov_matriz <- vcov_prueba
+  }
+  
+  #Desviaciones estándar (trunca a >=0 para evitar -0 por redondeo)
+  diag_var <- pmax(diag(varcov_matriz), 0)
+  desv_est <- sqrt(diag_var)
+  
+  z_est    <- coeficientes / desv_est #Estadístico z calculado
+  p_values <- 2 * pnorm(-abs(z_est))  #p-values de los parámetros
+  
+  #limpia infinitos/NaN
+  z_est[!is.finite(z_est)]       <- NA_real_
+  p_values[!is.finite(p_values)] <- NA_real_
   
   #Tabla resumen de la significancia de los parámetros estimados
   tabla_signif <- data.frame(
@@ -520,22 +566,49 @@ str_simplificado <- function(str_original) {
     mayor.p_value <- which.max(var_nosignif$p_value)
     peor_variable <- var_nosignif$var_param[mayor.p_value]
     
-    if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
-      rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
-      rez_y.lin <- setdiff(rez_y.lin, rez)
-    } else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
-      rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
-      rez_y.nl  <- setdiff(rez_y.nl, rez)
-    } else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
-      rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
-      rez_x.lin <- setdiff(rez_x.lin, rez)
-    } else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
-      rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
-      rez_x.nl  <- setdiff(rez_x.nl, rez)
-    } else {
-      warning("No se reconoce el tipo de parámetro a eliminar.")
+    lado <- sub("^.*?\\.", "", peor_variable)        # ej: "y_L11" o "x_L2"
+    
+    # patrón: y_Lk / x_Lq con k,q >= 1  (usa grupos CAPTURANTES)
+    m <- regexec("^(y|x)_L(\\d+)$", lado)
+    hits <- regmatches(lado, m)[[1]]
+    if (length(hits) < 3) {
+      warning(sprintf("Nombre inesperado '%s' (lado='%s'). Detengo para evitar inconsistencias.",
+                      peor_variable, lado))
       break
     }
+    var_yx <- hits[2]                 # "y" o "x"
+    rez    <- as.integer(hits[3])     # número del rezago (>=1)
+    
+    # --- ACTUALIZAR EL CONJUNTO CORRECTO SEGÚN PARTE (lineal/nolineal) Y VARIABLE (y/x) ---
+    if (grepl("^lineal_", peor_variable) && var_yx == "y") {
+      rez_y.lin <- setdiff(rez_y.lin, rez)
+    } else if (grepl("^nolineal_", peor_variable) && var_yx == "y") {
+      rez_y.nl  <- setdiff(rez_y.nl,  rez)
+    } else if (grepl("^lineal_", peor_variable) && var_yx == "x") {
+      rez_x.lin <- setdiff(rez_x.lin, rez)
+    } else if (grepl("^nolineal_", peor_variable) && var_yx == "x") {
+      rez_x.nl  <- setdiff(rez_x.nl,  rez)
+    } else {
+      warning(sprintf("Patrón no reconocido para '%s'. Detengo para evitar bucle.", peor_variable))
+      break
+    }
+    
+    #if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
+      #rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
+      #rez_y.lin <- setdiff(rez_y.lin, rez)
+    #} else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
+      #rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
+      #rez_y.nl  <- setdiff(rez_y.nl, rez)
+    #} else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
+      #rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
+      #rez_x.lin <- setdiff(rez_x.lin, rez)
+    #} else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
+      #rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
+      #rez_x.nl  <- setdiff(rez_x.nl, rez)
+    #} else {
+      #warning("No se reconoce el tipo de parámetro a eliminar.")
+      #break
+    #}
     
     #Reestimar modelo con los rezagos ajustados
     str_original <- str_mod(
@@ -574,6 +647,7 @@ ENSO_STR <- str_mod(y=ENSO, x=NULL, s=ENSO, rez_s=3, rez_y.lin=1:5, rez_x.lin = 
 ENSO_STR
 
 ENSO_STR.simplificado <- str_simplificado(ENSO_STR)
+ENSO_STR.simplificado
 
 cat('Modelo STR para la serie ENSO, teniendo 3 rezagos de sí misma como variables explicativas, ENSO_t-3 como variable de transición y una función logística como función de transición')
 
@@ -635,7 +709,7 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 
 
 #7.3 Estimación del modelo STR--------------------------------------------------
-DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y.lin=1:12, rez_x.lin = 1:3, rez_y.nl=1:12, rez_x.nl = 1:3,  G="ESTR")
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=11, rez_y.lin=1:3, rez_x.lin = 1:12, rez_y.nl=1:3, rez_x.nl = 1:12,  G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
 
