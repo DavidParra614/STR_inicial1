@@ -267,7 +267,7 @@ terasvirta_testNL <- function(y, x, rez_y, rez_x, alfa) {
 }
 
 #5. Función para estimar un modelo STR por máxima verosimilitud-----------------
-str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), rez_x.nl=c(), G) {
+str_mod <- function(y, x, s, rez_s, rez_y.lin, rez_x.lin, rez_y.nl, rez_x.nl, G) {
   #y = Variable endógena explicada
   #x = Variable exógena explicativa
   #s = Variable de la cual se usará algunos de sus rezagos para ser variable de transición
@@ -286,10 +286,10 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
     
     #Matriz de variables explicativas
     base_explicativas           <- embed(y, rez_max+1)
-    colnames(base_explicativas) <- paste0('y_L', c('', 1:rez_max))
+    colnames(base_explicativas) <- paste0('y_L', 0:rez_max)
     
     #Variable explicada
-    y_dep <- base_explicativas[, 'y_L']
+    y_dep <- base_explicativas[, 'y_L0']
     
     #Variables explicativas deseadas según sus rezagos 
     explicativas.lin <- paste0("y_L", rez_y.lin) #Parte Lineal
@@ -297,37 +297,49 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   
     } else {
 
-    !is.null(rez_x.lin)
-    !is.null(rez_x.nl) 
     rez_max <- max(rez_x.lin,rez_y.lin, rez_x.nl, rez_y.nl)
     
     #Matriz de variables explicativas
     base_explicativas           <- embed(cbind(y,x), rez_max+1)
     colnames(base_explicativas) <-c(
-    paste0('y_L', c('', 1:rez_max)),
-    paste0('x_L', c('', 1:rez_max))
+    paste0('y_L', 0:rez_max),
+    paste0('x_L', 0:rez_max)
     )
     
     #Variable explicada
-    y_dep <- base_explicativas[, 'y_L']
+    y_dep <- base_explicativas[, 'y_L0']
     
     #Variables explicativas deseadas según sus rezagos
-    explicativas.lin <- c(
-    paste0("y_L", rez_y.lin),
-    paste0("x_L", rez_x.lin)
-    )
-    explicativas.nl <- c(
-      paste0("y_L", rez_y.nl),
-      paste0("x_L", rez_x.nl)
-    )
+    
+    #Parte lineal
+    explicativas.lin <- character(0)
+    
+    if (length(rez_y.lin) > 0L) {
+      explicativas.lin <- c(explicativas.lin, paste0("y_L", rez_y.lin))
+    }
+    if (!is.null(x) && length(rez_x.lin) > 0L) {
+      explicativas.lin <- c(explicativas.lin, paste0("x_L", rez_x.lin))
+    }
+    
+    #Parte NO lineal
+    
+    explicativas.nl <- character(0)
+    
+    if (length(rez_y.nl) > 0L) {
+      explicativas.nl <- c(explicativas.nl, paste0("y_L", rez_y.nl))
+    }
+    if (!is.null(x) && length(rez_x.nl) > 0L) {
+      explicativas.nl <- c(explicativas.nl, paste0("x_L", rez_x.nl))
+    }
     
     }
   
   #Variables explicativas
   X <- cbind(intercepto=1, base_explicativas[, explicativas.lin, drop=FALSE]) #Variables explicativas para la parte lineal
-  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl, drop=FALSE]) #Variables explicativas de la parte no lineal
+  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl, drop=FALSE])  #Variables explicativas de la parte no lineal
   k <- ncol(X) #número de variables explicativas de la parte lineal
   j <- ncol(W) #número de variables explicativas de la parte no lineal
+  
   
   #Variable de transición ajustada 
   base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
@@ -373,8 +385,8 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   resultado <- optim(par     = param_inicio, 
                      fn      = Logverosimil_funcion,
                      method  = "BFGS",
-                     hessian =TRUE,
-                     control =list(maxit=5000))
+                     hessian = TRUE,
+                     control = list(maxit=5000))
   
   print(resultado$convergence)
   print(resultado$message)
@@ -388,27 +400,29 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   c                     <- resultado$par[(k+j)+2]
   
   #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
-  indice_por_col <- function(nm) {
-    nm <- trimws(as.character(nm))
-    if (nm == "intercepto") return(0L)
-    if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
-      stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
-    }
-    as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
-  }
+  #indice_por_col <- function(nm) {
+    #nm <- trimws(as.character(nm))
+    #if (nm == "intercepto") return(0L)
+    #if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
+      #stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
+    #}
+    #as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
+  #}
   
-  idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
-  idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
+  #idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
+  #idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    var_param       = paste0("lineal_", idx_lin, ".", colnames(X)), 
-    param_estim     = round(param_lineal, 6)
+    #var_param   = paste0("lineal_", idx_lin, ".", colnames(X)),
+    var_param   = paste0("lineal_", 0:(k-1), ".", colnames(X)),
+    param_estim = round(param_lineal, 6)
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    var_param   = paste0("nolineal_", idx_nl, ".", colnames(W)), 
+    #var_param   = paste0("nolineal_", idx_nl, ".", colnames(W)), 
+    var_param   = paste0("nolineal_", 0:(j-1), ".", colnames(W)),
     param_estim = round(param_nolineal, 6)
   )
   
@@ -419,7 +433,7 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   )
   
   #Pruebas de signficancia 
-  coeficientes  <- resultado$par                  #coeficientes estimados
+  coeficientes  <- resultado$par  #coeficientes estimados
   
   #Garantizar que la matriz var-cov no admita Nas
   H <- resultado$hessian
@@ -549,17 +563,17 @@ str_simplificado <- function(str_original) {
     mayor.p_value <- which.max(var_nosignif$p_value)
     peor_variable <- var_nosignif$var_param[mayor.p_value]
     
-    if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
-      rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
+    if (grepl("^lineal_\\d+\\.y_L(\\d+)", peor_variable)) {
+      rez       <- as.numeric(sub("^lineal_\\d+\\.y_L(\\d+)", "\\1", peor_variable))
       rez_y.lin <- setdiff(rez_y.lin, rez)
-    } else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
-      rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
+    } else if (grepl("^nolineal_\\d+\\.y_L(\\d+)", peor_variable)) {
+      rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L(\\d+)", "\\1", peor_variable))
       rez_y.nl  <- setdiff(rez_y.nl, rez)
-    } else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
-      rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
+    } else if (grepl("^lineal_\\d+\\.x_L(\\d+)$", peor_variable)) {
+      rez <- as.numeric(sub("^lineal_\\d+\\.x_L(\\d+)", "\\1", peor_variable))
       rez_x.lin <- setdiff(rez_x.lin, rez)
-    } else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
-      rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
+    } else if (grepl("^nolineal_\\d+\\.x_L(\\d+)", peor_variable)) {
+      rez <- as.numeric(sub("^nolineal_\\d+\\.x_L(\\d+)", "\\1", peor_variable))
       rez_x.nl  <- setdiff(rez_x.nl, rez)
     } else {
       warning("No se reconoce el tipo de parámetro a eliminar.")
