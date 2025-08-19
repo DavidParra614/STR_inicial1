@@ -582,7 +582,7 @@ str_simplificado <- function(str_original) {
     }
     
     #Reestimar modelo con los rezagos ajustados
-    str_original <- str_mod(
+    str_depurado <- str_mod(
       y         = y,
       x         = x,
       s         = s,
@@ -595,7 +595,7 @@ str_simplificado <- function(str_original) {
     )
   }
   
-  return(str_original)
+  return(str_depurado)
 }
 
 
@@ -686,4 +686,24 @@ cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos
 
 DINF_STR.simplificado <- str_simplificado(DINF_STR)
 DINF_STR.simplificado
+
+
+#8. Validación de Supuestos-----------------------------------------------------
+
+#8.1 No autocorrelación serial de los residuos----------------------------------
+
+cat('El test de no autocorrelación serial es un caso especial del test de Godfrey (1988)')
+
+#8.1.1 Creación de una función para realizar el test de no autocorrelación------
+
+test_godfrey.nl <- function(str_depurado, q) {
+  
+  #str_depurado: Es la estimación del modelo STR simplificado, es decir, luego de haber eliminado iterativamente las variables irrelevantes
+  #q: es el número de rezagos de los residuos del modelo sobre los cuales se desea hacer la prueba
+  
+  
+  
+  
+}
+  
 
