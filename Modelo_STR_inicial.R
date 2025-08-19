@@ -359,6 +359,19 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin, rez_x.lin, rez_y.nl, rez_x.nl, G)
     }
   }
   
+  #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
+  #indice_por_col <- function(nm) {
+    #nm <- trimws(as.character(nm))
+    #if (nm == "intercepto") return(0L)
+    #if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
+      #stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
+    #}
+    #as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
+  #}
+  
+  #idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
+  #idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
+  
   
   #Costrucción del logaritmo de verosimilitud
   Logverosimil_funcion    <- function(parametros) {
@@ -366,7 +379,7 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin, rez_x.lin, rez_y.nl, rez_x.nl, G)
     Phi_lineal            <- parametros[1:k]                     #parámetros de la parte lineal
     names(Phi_lineal)     <- paste0('phi_', 0:(k-1))             #nombres de los parámetros lineales
     theta_nolineal        <- parametros[(k+1):(k+j)]             #parámetros de la parte no lineal
-    names(theta_nolineal) <- paste0('theta_', 0:(j-1))           #nombres de los parámetros no lineales
+    names(theta_nolineal) <- paste0('theta_', 0:(j-1))            #nombres de los parámetros no lineales
     gamma                 <- parametros[(k+j)+1]                 #Parámetro de velocidad de transición
     c                     <- parametros[(k+j)+2]                 #Umbral de transición
 
@@ -399,29 +412,17 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin, rez_x.lin, rez_y.nl, rez_x.nl, G)
   gamma                 <- resultado$par[(k+j)+1]
   c                     <- resultado$par[(k+j)+2]
   
-  #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
-  indice_por_col <- function(nm) {
-    nm <- trimws(as.character(nm))
-    if (nm == "intercepto") return(0L)
-    if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
-      stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
-    }
-    as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
-  }
-  
-  idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
-  idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
   
   #Tabla resumen de los parámetros lineales
   tabla_lin <- data.frame(
-    var_param   = paste0("lineal_", idx_lin, ".", colnames(X)),
+    var_param   = paste0("lineal_", 0:(k-1), ".", colnames(X)),
     #var_param   = paste0("lineal_", 0:(k-1), ".", colnames(X)),
     param_estim = round(param_lineal, 6)
   )
   
   #Tabla resumen de los parámetros  no lineales
   tabla_nolin <- data.frame(
-    var_param   = paste0("nolineal_", idx_nl, ".", colnames(W)), 
+    var_param   = paste0("nolineal_", 0:(j-1), ".", colnames(W)), 
     #var_param   = paste0("nolineal_", 0:(j-1), ".", colnames(W)),
     param_estim = round(param_nolineal, 6)
   )
@@ -679,7 +680,7 @@ cat('Según el test de no linealidad de Terarsvirta (1995), la variable de trans
 
 
 #7.3 Estimación del modelo STR--------------------------------------------------
-DINF_STR <- str_mod(y=DINF, x=ENSO, s=DINF, rez_s=3, rez_y.lin=1:12, rez_x.lin = 1:12, rez_y.nl=1:12, rez_x.nl = 1:12,  G="ESTR")
+DINF_STR <- str_mod(y=DINF, x=ENSO, s=ENSO, rez_s=3, rez_y.lin=1:3, rez_x.lin = 1:12, rez_y.nl=1:3, rez_x.nl = 1:12,  G="ESTR")
 DINF_STR
 cat('Modelo STR para la serie DINF, teniendo 3 rezagos de sí misma y 12 rezagos de ENSO como variables explicativas, ENSO_t-11 como variable de transición y una función exponencial como función de transición')
 
