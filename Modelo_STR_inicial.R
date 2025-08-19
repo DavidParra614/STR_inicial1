@@ -359,20 +359,6 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin, rez_x.lin, rez_y.nl, rez_x.nl, G)
     }
   }
   
-  #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
-  #indice_por_col <- function(nm) {
-    #nm <- trimws(as.character(nm))
-    #if (nm == "intercepto") return(0L)
-    #if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
-      #stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
-    #}
-    #as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
-  #}
-  
-  #idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
-  #idx_nl    <- vapply(colnames(W), indice_por_col, integer(1))
-  
-  
   #Costrucción del logaritmo de verosimilitud
   Logverosimil_funcion    <- function(parametros) {
     k                     <- ncol(X)                             #número de variables explicativas
