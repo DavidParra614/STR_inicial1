@@ -390,28 +390,11 @@ str_mod <- function(y, x, s, rez_s, rez_y.lin=c(), rez_x.lin=c(), rez_y.nl=c(), 
   #Creación de función previa que ayuda a nombrar correctamente los parámetros. Ej: lineal_1.x_l1 --> el número coincide 
   indice_por_col <- function(nm) {
     nm <- trimws(as.character(nm))
-    if (length(nm) == 0) return(integer(0))
-    
-    # Patrones válidos
-    es_intercepto <- nm == "intercepto"
-    es_yx_lag     <- grepl("^(?:y|x)_L[1-9][0-9]*$", nm)  # y_L1, x_L2, ... (>=1)
-    
-    # Si hay algo que no es ni intercepto ni y/x con lag >=1, error claro
-    inval <- !(es_intercepto | es_yx_lag)
-    if (any(inval)) {
-      stop(
-        "Regresores inválidos detectados (esperaba 'intercepto' o y_Lk/x_Lq con k,q>=1): ",
-        paste(nm[inval], collapse = ", ")
-      )
+    if (nm == "intercepto") return(0L)
+    if (!grepl("^(y|x)_L[1-9][0-9]*$", nm)) {
+      stop("Regresor inválido (esperaba y_Lk/x_Lq con k,q>=1): ", nm)
     }
-    
-    # Construye índices: 0 para intercepto, número para y/x
-    out <- integer(length(nm))
-    out[es_intercepto] <- 0L
-    if (any(es_yx_lag)) {
-      out[es_yx_lag] <- as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm[es_yx_lag]))
-    }
-    out
+    as.integer(sub("^(?:y|x)_L([0-9]+)$", "\\1", nm, perl = TRUE))
   }
   
   idx_lin   <- vapply(colnames(X), indice_por_col, integer(1))
@@ -566,49 +549,22 @@ str_simplificado <- function(str_original) {
     mayor.p_value <- which.max(var_nosignif$p_value)
     peor_variable <- var_nosignif$var_param[mayor.p_value]
     
-    lado <- sub("^.*?\\.", "", peor_variable)        # ej: "y_L11" o "x_L2"
-    
-    # patrón: y_Lk / x_Lq con k,q >= 1  (usa grupos CAPTURANTES)
-    m <- regexec("^(y|x)_L(\\d+)$", lado)
-    hits <- regmatches(lado, m)[[1]]
-    if (length(hits) < 3) {
-      warning(sprintf("Nombre inesperado '%s' (lado='%s'). Detengo para evitar inconsistencias.",
-                      peor_variable, lado))
-      break
-    }
-    var_yx <- hits[2]                 # "y" o "x"
-    rez    <- as.integer(hits[3])     # número del rezago (>=1)
-    
-    # --- ACTUALIZAR EL CONJUNTO CORRECTO SEGÚN PARTE (lineal/nolineal) Y VARIABLE (y/x) ---
-    if (grepl("^lineal_", peor_variable) && var_yx == "y") {
+    if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
+      rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
       rez_y.lin <- setdiff(rez_y.lin, rez)
-    } else if (grepl("^nolineal_", peor_variable) && var_yx == "y") {
-      rez_y.nl  <- setdiff(rez_y.nl,  rez)
-    } else if (grepl("^lineal_", peor_variable) && var_yx == "x") {
+    } else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
+      rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
+      rez_y.nl  <- setdiff(rez_y.nl, rez)
+    } else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
+      rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
       rez_x.lin <- setdiff(rez_x.lin, rez)
-    } else if (grepl("^nolineal_", peor_variable) && var_yx == "x") {
-      rez_x.nl  <- setdiff(rez_x.nl,  rez)
+    } else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
+      rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
+      rez_x.nl  <- setdiff(rez_x.nl, rez)
     } else {
-      warning(sprintf("Patrón no reconocido para '%s'. Detengo para evitar bucle.", peor_variable))
+      warning("No se reconoce el tipo de parámetro a eliminar.")
       break
     }
-    
-    #if (grepl("^lineal_\\d+\\.y_L", peor_variable)) {
-      #rez       <- as.numeric(sub("^lineal_\\d+\\.y_L", "\\1", peor_variable))
-      #rez_y.lin <- setdiff(rez_y.lin, rez)
-    #} else if (grepl("^nolineal_\\d+\\.y_L", peor_variable)) {
-      #rez       <- as.numeric(sub("^nolineal_\\d+\\.y_L", "\\1", peor_variable))
-      #rez_y.nl  <- setdiff(rez_y.nl, rez)
-    #} else if (grepl("^lineal_\\d+\\.x_L", peor_variable)) {
-      #rez <- as.numeric(sub("^lineal_\\d+\\.x_L", "\\1", peor_variable))
-      #rez_x.lin <- setdiff(rez_x.lin, rez)
-    #} else if (grepl("^nolineal_\\d+\\.x_L", peor_variable)) {
-      #rez <- as.numeric(sub("^nolineal_\\d+\\.x_L", "", peor_variable))
-      #rez_x.nl  <- setdiff(rez_x.nl, rez)
-    #} else {
-      #warning("No se reconoce el tipo de parámetro a eliminar.")
-      #break
-    #}
     
     #Reestimar modelo con los rezagos ajustados
     str_original <- str_mod(
