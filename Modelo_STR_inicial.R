@@ -568,7 +568,7 @@ str_simplificado <- function(str_original) {
     }
     
     #Reestimar modelo con los rezagos ajustados
-    str_depurado <- str_mod(
+    str_original <- str_mod(
       y         = y,
       x         = x,
       s         = s,
@@ -581,7 +581,7 @@ str_simplificado <- function(str_original) {
     )
   }
   
-  return(str_depurado)
+  return(str_original)
 }
 
 
@@ -687,6 +687,111 @@ test_godfrey.nl <- function(str_depurado, q) {
   #str_depurado: Es la estimación del modelo STR simplificado, es decir, luego de haber eliminado iterativamente las variables irrelevantes
   #q: es el número de rezagos de los residuos del modelo sobre los cuales se desea hacer la prueba
   
+  #Traer los argumentos necesarios del modelo STR depurado
+  
+  y          <- str_depurado$y
+  x          <- str_depurado$x
+  s          <- str_depurado$s
+  rez_s      <- str_depurado$rez_s
+  rez_y.lin  <- str_depurado$rez_y.lin
+  rez_x.lin  <- str_depurado$rez_x.lin
+  rez_y.nl   <- str_depurado$rez_y.nl
+  rez_x.nl   <- str_depurado$rez_x.nl
+  G          <- str_depurado$G
+  parámetros <- str_depurado$parámetros
+  
+  #Matriz de variables explicativas de la parte lineal hasta el rezago máximo
+  if (is.null(x)) {
+    rez_x.lin = NULL
+    rez_x.nl  = NULL
+    rez_max   <- max(rez_y.lin, rez_y.nl)
+    
+    #Matriz de variables explicativas
+    base_explicativas           <- embed(y, rez_max+1)
+    colnames(base_explicativas) <- paste0('y_L', 0:rez_max)
+    
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L0']
+    
+    #Variables explicativas deseadas según sus rezagos 
+    explicativas.lin <- paste0("y_L", rez_y.lin) #Parte Lineal
+    explicativas.nl  <- paste0("y_L", rez_y.nl)  #Parte no lineal
+    
+  } else {
+    
+    rez_max <- max(rez_x.lin,rez_y.lin, rez_x.nl, rez_y.nl)
+    
+    #Matriz de variables explicativas
+    base_explicativas           <- embed(cbind(y,x), rez_max+1)
+    colnames(base_explicativas) <-c(
+      paste0('y_L', 0:rez_max),
+      paste0('x_L', 0:rez_max)
+    )
+    
+    #Variable explicada
+    y_dep <- base_explicativas[, 'y_L0']
+    
+    #Variables explicativas deseadas según sus rezagos
+    
+    #Parte lineal
+    explicativas.lin <- character(0)
+    
+    if (length(rez_y.lin) > 0L) {
+      explicativas.lin <- c(explicativas.lin, paste0("y_L", rez_y.lin))
+    }
+    if (!is.null(x) && length(rez_x.lin) > 0L) {
+      explicativas.lin <- c(explicativas.lin, paste0("x_L", rez_x.lin))
+    }
+    
+    #Parte NO lineal
+    
+    explicativas.nl <- character(0)
+    
+    if (length(rez_y.nl) > 0L) {
+      explicativas.nl <- c(explicativas.nl, paste0("y_L", rez_y.nl))
+    }
+    if (!is.null(x) && length(rez_x.nl) > 0L) {
+      explicativas.nl <- c(explicativas.nl, paste0("x_L", rez_x.nl))
+    }
+    
+  }
+  
+  #Variables explicativas
+  X <- cbind(intercepto=1, base_explicativas[, explicativas.lin, drop=FALSE]) #Variables explicativas para la parte lineal
+  W <- cbind(intercepto=1, base_explicativas[, explicativas.nl, drop=FALSE])  #Variables explicativas de la parte no lineal
+  k <- ncol(X) #número de variables explicativas de la parte lineal
+  j <- ncol(W) #número de variables explicativas de la parte no lineal
+  
+  
+  #Variable de transición ajustada 
+  base_s <- embed(s, rez_max + 1) #Para que coincida con la base de datos de las variables explicativas
+  colnames(base_s) <- paste0("s_L", 0:rez_max)
+  
+  #Extraer la variable de transición
+  z <- base_s[, paste0("s_L", rez_s)]
+  
+  #Función de transición
+  func_trans <- function(z, gamma, c) {  
+    if (G=='LSTR') {
+      return(1/(1+exp(-gamma*(z-c))))
+    } else if (G=='ESTR') {
+      return(1-exp(-gamma*((z-c)^2)))
+    } else {
+      stop("Entrada inválida. Por favor escriba 'LSTR' o 'ESTR' ")
+    }
+  }
+  
+  #Llamar los parámetros estimados
+  
+  Phi_lineal     <- parámetros[1:k]         #Parámetros de la parte lineal
+  theta_nolineal <- parámetros[(k+1):(k+j)] #Parámetros de la parte no lineal
+  gamma          <- parámetros[(k+j)+1]     #Velocidad de transición
+  c              <- parámteros[(k+j)+2]     #Umbral de transición
+  
+  #Llamar la función de transición
+  if (identicals(G, "LSTR")) {
+    
+  }
   
   
   
