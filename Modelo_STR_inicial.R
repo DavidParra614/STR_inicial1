@@ -788,13 +788,18 @@ test_godfrey.nl <- function(str_depurado, q) {
   gamma          <- parámetros[(k+j)+1]     #Velocidad de transición
   c              <- parámteros[(k+j)+2]     #Umbral de transición
   
-  #Llamar la función de transición
+  #Llamar la función de transición y calcular las derivadas parciales con respecto a gamma y c
   if (identicals(G, "LSTR")) {
-    
+    ft         <- (1/(1+exp(-gamma*(z-c)))) #Función de transición logística
+    dft_dgamma <- ft*(1-ft)*(z-c)           #Derivada parcial de la función de transición logística con respecto a gamma
+    dft_dc     <- ft(ft-1)*gamma            #Derivada parcial de la función de transición logística con respecto a c   
   }
+  else if (identicals(G, "ESTR")) {
+    gt         <- (1-exp(-gamma*((z-c)^2))) #Función de transición exponencial
+    dgt_dgamma <- (1-gt)*((z-c)^2)          #Derivada parcial de la función de transición exponencial con respecto a gamma
+    dgt_dc     <- (gt-1)*(2*gamma)*(z-c)    #Derivada parcial de la función de transición exponencial con respecto a c
   
-  
-  
+  }else stop("G debe ser 'LSTR' o 'ESTR'")
 }
   
 
